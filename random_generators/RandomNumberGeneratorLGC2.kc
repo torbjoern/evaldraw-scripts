@@ -1,0 +1,112 @@
+static a = 2;
+static b = 4;
+static c = 15;
+static x[15];
+static x1 = 0;
+()   
+{
+   cls(0);
+
+   setcol(0xffffff);
+   moveto(100,50);
+   
+   printf("Linear Congruential Generator\n\n" );
+   printf("x[i]=(a+b*x[i-1]) mod c\n\n" );
+   
+   printf("rand = %g\n", myrand(4) );
+   printf("rand = %g\n", myrand(3) );
+   printf("rand = %g\n", myrand(2) );
+   printf("rand = %g\n", myrand(1) );
+   printf("rand = %g\n", myrand(0) );
+   
+  /*
+   for( i=0; i<c; i+=1)
+   {
+      moveto(10+i,500);
+      lineto(10+i,500 - (myrand(i)/4) );
+   }
+   */
+  
+  
+   width = 500;
+   rectSize = width/(c+1);
+   gridWidth = (c) / 3;
+   gridHeight = (c) / 4;
+   
+   rectCounter = 0;
+   for(y=0; y<gridHeight; y++)
+   {
+      for(x=0; x<gridWidth; x++)
+      {
+         xpos = 100+(x*(rectSize+1) );
+         ypos = 200+(y*(rectSize+1));
+         
+         setcol(0xffffff);
+         
+         if(rectCounter)
+         {
+         }
+         
+         fillRect(xpos, ypos,rectSize,rectSize, 1);
+         moveto(xpos+rectSize/2-5, ypos+rectSize/2-5);
+         setcol(0xff0000);
+         printf("%g", rectCounter);
+         
+         rectCounter++;
+         
+         if( rectCounter > c-1)
+         {
+            break;
+         }  
+      }
+      if( rectCounter > c-1)
+      {
+         break;
+      } 
+   }
+   
+   
+
+}
+
+
+
+drawRect(sx, sy, wx, wy)
+{   
+   moveto(sx, sy);
+   lineto(sx+wx, sy+0);
+   
+   moveto(sx, sy+wy);
+   lineto(sx+wx, sy+wy);
+   
+   moveto(sx, sy);
+   lineto(sx, sy+wy);
+   
+   moveto(sx+wx, sy);
+   lineto(sx+wx, sy+wy);
+}
+
+fillRect(sx, sy, wx, wy, step)
+{
+   for(i=0; i<=wx; i+=step)
+   {   
+   moveto(sx+i, sy);
+   lineto(sx+i, sy+wy);
+   }
+}
+
+
+
+
+myrand(pos)
+{   
+   x[0] = x1;
+   for(i=1; i< c; i++)
+   {
+      x[i] = (a+b*x[i-1]) % c;
+   }
+   
+   return x[pos];   
+}
+
+

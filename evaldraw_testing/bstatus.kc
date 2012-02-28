@@ -1,0 +1,49 @@
+()
+{
+   cls(0);
+   
+
+   b = bstatus;
+   
+   moveto(xres/2-300, yres/2);
+   setcol(0,255,0);
+   setfont(18,36,1);
+   printf("bstatus = %g\n", bstatus);
+   
+   left = 0;
+   right = 0;
+   middle = 0;
+   
+   if ( bstatus == 1 ) left = 1;
+   
+   if ( bstatus == 2 ) right = 1;
+   
+   if ( bstatus == 4 ) middle = 1;
+   
+   if ( bstatus==3 ) {
+      left = 1 ;
+      right = 1;
+   }
+   
+   if ( bstatus==5 ) {
+      left = 1 ;
+      middle = 1;
+   }
+   
+   if ( bstatus==6 ) {
+      right = 1 ;
+      middle = 1;
+   }
+
+   if ( bstatus==7 ) {
+      left = 1 ;
+      right = 1;
+      middle = 1;
+   }
+   
+   if ( left ) printf("left mouse\n");
+   
+   if ( right ) printf("right mouse\n");
+   
+   if ( middle ) printf("middle mouse\n");
+}

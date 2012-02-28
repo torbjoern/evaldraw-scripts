@@ -1,0 +1,76 @@
+struct vert
+{
+   x,y;
+};
+
+()
+{
+   cls(0);
+   
+   vert p,a,b,c;
+   p.x = mousx;
+   p.y = mousy;
+   
+   cx = xres/2; cy = yres/2;
+   ang = 0;
+   r = 100;
+   a.x = cx + cos(ang) * r;
+   a.y = cy + sin(ang) * r;
+   
+   ang += 2*PI / 3;
+   b.x = cx + cos(ang) * r;
+   b.y = cy + sin(ang) * r;
+   
+   ang += 2*PI / 3;
+   c.x = cx + cos(ang) * r;
+   c.y = cy + sin(ang) * r;
+   
+
+
+   glEnable(GL_DEPTH_TEST);
+   clz(1e32);
+   
+   hit = pointInTriangle(p,a,b,c);
+   if( hit ) 
+   {
+      setcol(255,0,0);
+      glBegin(GL_COMPLEx);
+      glVertex(a.x, a.y);
+      glVertex(b.x, b.y);
+      glVertex(c.x, c.y);
+      glVertex(a.x, a.y);  
+      glEnd();
+   }else
+   {
+      setcol(255,255,255);
+      glBegin(GL_LINE_STRIP);
+      glVertex(a.x, a.y);
+      glVertex(b.x, b.y);
+      glVertex(c.x, c.y);
+      glVertex(a.x, a.y);  
+      glEnd();
+   }
+}
+
+
+// http://www.blackpawn.com/texts/pointinpoly/default.html
+pointInTriangle(vert p, vert a, vert b, vert c)
+{
+   v0x = c.x - a.x;
+   v0y = c.y - a.y;
+   v1x = b.x - a.x;
+   v1y = b.y - a.y;
+   v2x = p.x - a.x;
+   v2y = p.y - a.y;
+   dot00 = v0x*v0x + v0y*v0y;
+   dot01 = v0x*v1x + v0y*v1y;
+   dot02 = v0x*v2x + v0y*v2y;
+   dot11 = v1x*v1x + v1y*v1y;
+   dot12 = v1x*v2x + v1y*v2y;
+   invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+   u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+   v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+   // Check if point is in triangle
+   return (u > 0) && (v > 0) && (u + v < 1);
+}

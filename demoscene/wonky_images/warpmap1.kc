@@ -1,0 +1,427 @@
+enum{imgW = 256, imgH = 256}
+enum{W=14, H=14, tileSiz = 14};
+static offsX[W][H];
+static offsY[W][H];
+static offsXV[W][H];
+static offsYV[W][H];
+static offsXINT[W][H];
+static offsYINT[W][H];
+static offsXacc[W][H];
+static offsYacc[W][H];
+static offsC[W][H];
+
+/*
+static norms[3][3] =
+{
+   0, 16, 32,
+   32, 16*1.414214, 16*2.236068,
+   32, 16*2.236068, 32*1.414214
+};
+*/
+
+static norms[3][3] =
+{
+   0, tileSiz, tileSiz*2,
+   tileSiz*2, tileSiz*1.414214, tileSiz*2.236068,
+   tileSiz*2, tileSiz*2.236068, tileSiz*2*1.414214
+};
+
+
+static pal[255];
+
+enum{filterWidth=3, filterHeight=3}
+static filter[filterWidth][filterHeight] =  
+{ 
+     0, .5, 0, 
+     .5,.5,.5, 
+     0, .5, 0 
+};
+static factor = 1;
+static bias = 0;
+
+static img1[256][256];
+static img2[256][256];
+
+static imageR[256][256];
+static imageG[256][256];
+static imageB[256][256];
+static result[256][256]; 
+
+static useImg = 1;
+()
+{
+   cls(0);
+   
+   xs = tileSiz; ys = tileSiz;
+   
+   if(numframes==0){
+      init();
+      DrawTexture(xs,ys);  
+   }
+   if(bstatus==1)
+   {
+      if(useImg==1)
+      {
+         for(x=0; x<imgW; x++)
+         for(y=0; y<imgH; y++)
+         {
+            img1[x][y] = pic(x,y);
+         }
+      }
+      else
+      {
+         DrawTexture(xs,ys); 
+      }
+   }
+   
+   for(i=0; i<1; i++)
+   Relax();
+   
+   TextureWarp(); // read img1, store in img2
+   applyFilter(xs,ys); // apply to img2, store in img2.
+   //copy(); // copy top and bottomrows from result to img1.
+   mix();
+  
+
+   xmax = w*xs; ymax = h*ys; 
+   for(x=0; x<xmax; x++)
+   for(y=0; y<ymax; y++)
+   {
+      //setcol( img2[x][y] );
+      setcol( result[x][y] );
+      setpix(x,y);
+   }
+   
+   //img1[mousx][mousy] = rgb(rnd*255,rnd*255,rnd*255);
+   // agitate grid
+   /*
+   if(bstatus == 1)
+   for(x=0; x<W; x++)
+   for(y=0; y<H; y++)
+   {
+      xp = x*tileSiz; yp = y*tileSiz;
+      if(xp < mousx+15 && xp > mousx-15)
+      if(yp < mousy+15 && yp > mousy-15)
+      {
+         offsXv[x][y] += .1;
+         offsYv[x][y] += .1;
+      }
+   } 
+   */  
+   //drawGrid();
+   
+}
+drawGrid(){
+   for(x=0; x<W; x++)
+   for(y=0; y<H; y++)
+   {
+      setcol(0xffffff);
+      drawsph( offsX[x][y], offsY[x][y], -5);
+   }
+}
+
+copy()
+{
+   for(x=0; x<imgW; x++){
+      img1[x][0] = result[x][0];
+      img1[x][H-1] = result[x][H-1]; 
+   }
+}
+
+mix()
+{
+   for(x=0; x<imgW; x++)
+   for(y=0; y<imgH; y++){
+      
+      r=0; g=0; b=0;
+      hex2rgb(result[x][y],r,g,b); //smoothed 
+
+
+      r2=0; g2=0; b2=0;
+      hex2rgb(img1[x][y],r2,g2,b2);
+      div = 2;
+      div2 = 5;
+      img1[x][y] = rgb( r2/div + r/div2, g2/div + g/div2, b2/div + b/div2 );
+      
+   }
+}
+
+TextureWarp()
+{
+   for(y=0; y<H; y++)
+   for(x=0; x<W; x++)
+   {
+      TextureBlock(x,y);
+   }
+}
+
+// img1 -> img2
+TextureBlock(xo,yo)
+{
+   xi = xo * tileSiz;
+   yi = yo * tileSiz;
+
+   Ax=offsXint[xo][yo];
+   Ay=offsYint[xo][yo];
+   
+   Bx=offsXint[xo+1][yo];
+   By=offsYint[xo+1][yo];
+   
+   Cx=offsXint[xo][yo+1];
+   Cy=offsYint[xo][yo+1];
+   
+   Dx=offsXint[xo+1][yo+1];
+   Dy=offsYint[xo+1][yo+1];
+   
+   // Image corners, Left, right
+   // A B
+   // C D
+   TX1=0, TY1=0, TX2=0, TY2=0; tx=0; ty=0;
+
+   VLDx = (Cx-Ax)/tileSiz; // Rate of change X down left
+   VRDx = (Dx-Bx)/tileSiz; // X down right
+   VLDy = (Cy-Ay)/tileSiz; // Y down left
+   VRDy = (Dy-By)/tileSiz; // Y down right
+   
+   TX1 = Ax;
+   TY1 = Ay;
+   TX2 = Bx;
+   TY2 = By;
+   
+   for(y=yi; y<yi+tileSiz; y++)
+   {
+      HDx = (TX2-TX1) / tileSiz; // Rate of change across polygon
+      HDy = (TY2-TY1) / tileSiz; // Rate of change across polygon
+      tx = TX1;
+      ty = TY1;
+      
+      for(x=xi; x<xi+tileSiz; x++)
+      {
+         img2[x][y] = img1[ int(tx) ][ int(ty) ];
+         tx += HDx;
+         ty += HDy;
+      }
+      
+      TX1 += VLDx;  
+      TY1 += VLDy;
+      TX2 += VRDx;
+      TY2 += VRDy;
+   }  
+}
+
+// img2 -> result
+applyFilter(xs,ys)
+{
+   xmax = w*xs;
+   ymax = h*ys;
+   for(x=0; x<xmax; x++)
+   for(y=1; y<ymax-1; y++)
+   {
+      r=0; g=0; b=0;
+      
+      for(filterX=0; filterX < filterWidth; filterX++)
+      for(filterY=0; filterY < filterHeight; filterY++)
+      {
+         imageX = (x-filterWidth / 2 + filterX + xmax) % xmax;
+         imageY = (y-filterHeight / 2 + filterY + ymax) % ymax;
+
+         imgR=0; imgG=0; imgB=0;
+         hex2rgb(img2[imageX][imageY],&imgr,&imgg,&imgb);
+         r += imgr * filter[filterX][filterY];
+         g += imgg * filter[filterX][filterY];
+         b += imgb * filter[filterX][filterY];
+      }
+      
+      r = min(max(factor*r+bias,0),255);
+      g = min(max(factor*g+bias,0),255);
+      b = min(max(factor*b+bias,0),255);
+      result[x][y] = rgb( r,g,b );
+   }
+}
+
+hex2rgb(mrgb,&r,&g,&b)
+{  
+   r = (mrgb / 2^16);
+   g = (mrgb / 2^8) % 256;
+   b = mrgb % 256;   
+}
+
+DrawTexture(xs,ys)
+{
+   VLDc=0; VRDc=0; HDc=0;
+   C1=0; C2=0; c=0;
+   x=0; y=0; xi=0; yi=0;
+   
+   for(yi=0; yi<H-1; yi++)
+   for(xi=0; xi<W-1; xi++)
+   {
+      VLDc = (offsC[xi][yi+1] - offsC[xi][yi])/ys;
+      VRDc = (offsC[xi+1][yi+1] - offsC[xi+1][yi])/ys;
+      
+      C1 = offsC[xi][yi];
+      C2 = offsC[xi+1][yi];
+      
+      for(y=yi*ys; y<(yi+1)*ys; y++)
+      {
+         HDc = (C2-C1) / ys;
+         c = C1;
+         
+         for(x=xi*xs; x<(xi+1)*xs; x++)
+         {
+            //setcol( 4*pal[c] ); setpix(x,y);
+            img1[x][y] = 4*pal[c];
+            c += HDc;
+         }
+         C1 += VLDc;
+         C2 += VRDc;
+         
+      }
+   }
+}
+
+Init()
+{
+   // setup garish palette
+   for(i=0; i<64; i++)
+   {
+      pal[i]     = rgb(i,   0,    63-i);
+      pal[i+64]  = rgb(63-i,i,    0);
+      pal[i+128] = rgb(0,   63-i, i);
+      pal[i+192] = rgb(i,   0,    63-i);
+   }   
+
+   for(y=0; y<H; y++)
+   for(x=0; x<W; x++)
+   {
+      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
+      {
+         offsX[x][y] = x*tileSiz;;
+         offsY[x][y] = y*tileSiz;;
+         offsXv[x][y] = 0;
+         offsYv[x][y] = 0;
+      }
+      else
+      {
+         offsX[x][y] = nrnd*2+ x*tileSiz;
+         offsY[x][y] = nrnd*2 + y*tileSiz;;
+         offsXv[x][y] = 0;
+         offsYv[x][y] = 0;
+      }
+      offsXint[x][y] = offsX[x][y];
+      offsYint[x][y] = offsY[x][y];
+      
+      offsXacc[x][y] = 0;
+      offsYacc[x][y] = 0;
+      offsC[x][y] = int(rnd*255); 
+   }
+}
+
+Relax()
+{
+   for(y=1; y<H-1; y++)
+   {
+      yh = y+2;
+      yl = y-2;
+      if(yl<0) yl=0;
+      if(yh>H-1) yh = H-1;
+      
+      for(x=1; x<W-1; x++)
+      {
+         xh = x+2;
+         xl = x-2;
+         if(xl<0) xl=0;
+         if(xh>W-1) xh=W-1;
+      
+         for(yi=yl; yi<=yh; yi++)
+         {
+            for(xi=xl; xi<=xh; xi++)
+            {
+               if( (xi != x) || (yi != y) )
+               {
+                  xspring = offsX[xi][yi] - offsX[x][y];
+                  yspring = offsY[xi][yi] - offsY[x][y];
+                  
+                  norm = norms[abs(xi-x)][abs(yi-y)];
+                  length = sqrt(xspring^2 + yspring^2);
+                  scaler = (norm-length) * 0.00002;
+                  
+                  xspring *= scaler;
+                  yspring *= scaler;
+                  
+                  offsXv[xi][yi] += xspring;
+                  offsYv[xi][yi] += yspring;
+               }   
+            }
+         }
+      }
+   }
+   
+   for(y=1; y<H-1; y++)
+   for(x=1; x<W-1; x++)
+   {
+      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
+      {
+      }
+      else
+      {
+         offsX[x][y] += offsXv[x][y];
+         offsY[x][y] += offsYv[x][y];
+         offsXv[x][y] *= 0.9999;
+         offsYv[x][y] *= 0.9999;
+      }
+      
+      // need to trunc this to integer?
+      offsXint[x][y] = ( offsX[x][y] );
+      offsYint[x][y] = ( offsY[x][y] );
+      
+      /*
+      // allows it to handle non-integer values of points on the grid
+      offsXacc[x][y] += offsX[x][y];
+      if(offsXacc[x][y] > 1)
+      {
+         offsXacc[x][y] -= 1;
+         offsXint[x][y] += 1;
+      }
+      if(offsXacc[x][y] < 1)
+      {
+         offsXacc[x][y] += 1;
+         offsXint[x][y] -= 1;
+      }      
+
+      offsYacc[x][y] += offsY[x][y];
+      if(offsYacc[x][y] > 1)
+      {
+         offsYacc[x][y] -= 1;
+         offsYint[x][y] += 1;
+      }
+      if(offsYacc[x][y] < 1)
+      {
+         offsYacc[x][y] += 1;
+         offsYint[x][y] -= 1;
+      } 
+      */
+
+   }
+   
+// make sure points on the grid never stray outside screen
+
+   for(x=0; x<W-1; x++)
+   {
+      if( offsYint[x][1] < 0 ) offsYint[x][1] = 0;
+      if( offsYint[x][H-2] > imgH ) offsYint[x][H-2] = imgH;
+   }
+   for(y=0; y<H-1; y++)
+   {
+      if( offsXint[1][y] < 0 ) offsXint[1][y] = 0;
+      if( offsXint[W-2][y] > imgW ) offsXint[W-2][y] = imgW;
+   }
+}
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,55 @@
+
+()
+cls(0);
+clz(1e32);
+
+setcol(0xffffff);
+
+time = klock(0);
+
+x=0.1;
+y=0.0;
+z=0.0;
+
+r=28;
+s=10;
+b=8/3;
+
+imax = 10000;
+f = imax/2;//1*mousy/yres;
+
+zoom = 5.5;
+moveto(x*zoom,y*zoom,z*zoom);
+for(i=0; i<imax; i++){
+   //drawsph(x*zoom,y*zoom,z*zoom,.5);
+   lineto(x*zoom,y*zoom,z*zoom);
+   dx = s*(y-z);
+   dy = r*x - y - x*z;
+   dz = x*y - b*z;
+   x+=dx/f;
+   y+=dy/f;
+   z+=dz/f;
+}
+
+imax2 = imax*mousy/yres;
+imax2 = imax*(0.5+cos(time)/2);
+
+x=0.1;
+y=0.0;
+z=0.0;
+for(i=0; i<imax2; i++){
+   dx = s*(y-z);
+   dy = r*x - y - x*z;
+   dz = x*y - b*z;
+   x+=dx/f;
+   y+=dy/f;
+   z+=dz/f;
+}
+// drawcone(x*zoom,y*zoom,z*zoom,-50, 
+//x*zoom+dx/f*2,y*zoom+dy/f*2,z*zoom+dz/f*2, 10);
+drawsph(x*zoom,y*zoom,z*zoom,50);   
+
+
+ang = 2*PI*mousx/xres;
+camDist = -1000;
+setcam( camDist*sin(ang), 0, camDist*cos(ang), ang, 0);

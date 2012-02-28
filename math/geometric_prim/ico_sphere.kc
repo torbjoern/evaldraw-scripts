@@ -1,0 +1,173 @@
+/*
+Subdividing an icosahedron into a sphere.
+converted from a processing applet I made, 
+which in turn was a port of the OpenGL Redbook program
+*/
+
+static triangleCount = 0;
+
+// The vertices that make up a icosahedron
+
+// because every value in eval is a struct or double
+// we can have a double "enum" value for initing auto arrays
+enum{   
+   xx = 0.525731112119133606,
+   zz = 0.850650808352039932
+}
+
+// xx and zz constants make sure the distance from the origin to any of the verts of the iscosahedron is 1.0
+static vertexData[12][3] = {    
+      -xx, 0.0, zz   ,  xx, 0.0, zz   ,  -xx, 0.0, -zz  ,  xx, 0.0, -zz  ,    0.0, zz, xx  , 
+      0.0, zz, -xx   , 0.0, -zz, xx   ,  0.0, -zz, -xx   ,  zz, xx, 0.0  ,   -zz, xx, 0.0   , 
+      zz, -xx, 0.0  ,   -zz, -xx, 0.0   
+};
+
+// indices used to construct triangles by linking vertices together
+static tindices[20][3] = { 
+   0,4,1,   0,9,4,   9,5,4,   4,5,8,   4,8,1,
+   8,10,1,  8,3,10,  5,3,8,  5,2,3,  2,7,3,    
+   7,10,3,   7,6,10,   7,11,6,   11,0,6,   0,1,6,
+   6,1,10,   9,0,11,  9,11,2,   9,2,5,   7,2,11   
+};
+
+struct vec{x,y,z;}
+
+()
+{
+   if (numframes==0)
+   {
+
+
+   }
+
+   cls(0); clz(1e32);
+   
+   max_subdivs = 4;
+   subDivDepth = int( max_subdivs*mousx/xres );
+   constrain(subDivDepth,0,max_subdivs);
+   triangleCount = 0; // reset
+   vec v1,v2,v3;
+  
+    for (i = 0; i < 20; i++)
+    { 
+      vecset(v1,  vertexData[ tindices[i][0] ][0],  vertexData[ tindices[i][0] ][1],  vertexData[ tindices[i][0] ][2] ); 
+      vecset(v2,  vertexData[ tindices[i][1] ][0],  vertexData[ tindices[i][1] ][1],  vertexData[ tindices[i][1] ][2] );
+      vecset(v3,  vertexData[ tindices[i][2] ][0],  vertexData[ tindices[i][2] ][1],  vertexData[ tindices[i][2] ][2] );
+      subdivide(v1,v2,v3,subDivDepth);
+    }
+
+   t = klock(0);
+   a = t;
+   r = -2;
+   setcam(sin(a)*r,0,cos(a)*r,t,0);
+   
+   moveto(0,0);
+   printnum(triangleCount);
+   printnum(subDivDepth);
+}
+
+constrain(&var, lo, hi )
+{
+   var = min( hi, max(lo, var) );
+}
+
+drawtriangle(vec v1, vec v2, vec v3) 
+{ 
+   setcol(255,0,0);
+   glBegin(GL_TRIANGLES); 
+      glvertex(v1.x, v1.y, v1.z); 
+      glvertex(v2.x, v2.y, v2.z);    
+      glvertex(v3.x, v3.y, v3.z);   
+   glEnd();
+
+   s = 1.01;   
+   setcol(255,255,255);
+   glBegin(GL_LINE_STRIP);
+      glvertex(v1.x*s, v1.y*s, v1.z*s); 
+      glvertex(v2.x*s, v2.y*s, v2.z*s); 
+      glvertex(v3.x*s, v3.y*s, v3.z*s);   
+   glEnd();
+
+   triangleCount++;
+}
+
+subdivide(vec v1, vec v2, vec v3, depth) 
+{ 
+  if(depth == 0)
+  {
+    drawtriangle(v1,v2,v3);
+    return;
+  }
+  
+  vec v12; vecadd(v12, v1,v2);
+  vec v23; vecadd(v23, v2,v3);
+  vec v31; vecadd(v31, v1,v3);
+  normalize(v12);    
+  normalize(v23); 
+  normalize(v31); 
+  subdivide(v1,v12,v31, depth-1);
+  subdivide(v2,v23,v12, depth-1);
+  subdivide(v3,v31,v23, depth-1);
+  subdivide(v12,v23,v31, depth-1);
+}
+
+vecScalar( vec out, vec a, s )
+{
+   out.x = a.x * s;
+   out.y = a.y * s;
+   out.z = a.z * s;
+}
+
+vecAdd( vec out, vec a, vec b)
+{
+   out.x = a.x + b.x;
+   out.y = a.y + b.y;
+   out.z = a.z + b.z;   
+}
+vecSub( vec out, vec a, vec b)
+{
+   out.x = a.x - b.x;
+   out.y = a.y - b.y;
+   out.z = a.z - b.z;   
+}
+
+vecCross( vec out, vec a, vec b)
+{
+   out.x = a.y*b.z - a.z*b.y;
+   out.y = a.z*b.x - a.x*b.z;
+   out.z = a.x*b.y - a.y*b.x;
+}
+
+vecset(vec a, x,y,z){
+   a.x = x; a.y = y; a.z = z;
+}
+
+vecset(vec a, vec other){
+   a.x = other.x; a.y = other.y; a.z = other.z;
+}
+
+vecDot( vec a, vec b)
+{
+   return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+
+length( vec v )
+{
+   return sqrt( vecdot(v,v) );
+}
+
+normalize( vec v )
+{
+   len = length(v);
+   if ( len )
+   {
+      v.x /= len; v.y /= len; v.z /= len;
+   }
+}
+
+buildMatrix( mtx[9], vec side, vec up, vec fwd )
+{
+   mtx[0] = side.x; mtx[1] = side.y; mtx[2] = side.z;
+   mtx[3] = up.x;   mtx[4] = up.y;   mtx[5] = up.z;
+   mtx[6] = fwd.x;  mtx[7] = fwd.y;  mtx[8] = fwd.z;
+}

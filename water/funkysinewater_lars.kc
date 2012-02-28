@@ -1,0 +1,93 @@
+()
+{
+   clz(1e32);
+   cls(0);
+   
+
+   t = 3*klock(0);
+   
+
+   enum{MAXVERTS = 64*64}
+   static vertx[MAXVERTS];
+   static verty[MAXVERTS];
+   static vertz[MAXVERTS];
+
+
+   idx = 0;
+   rez = 32;
+
+   for(i=-rez; i<rez; i++)
+   for(j=-rez; j<rez; j++)
+   {
+
+      yofs = 0;
+      yofs += 1.0 * sin( t + j*0.5 + i*0.125);
+      yofs += 2.0 * sin( t + (rez-j)*0.125 + i*0.25 );
+      yofs += 2.0 * sin( t + (j)*0.125 + (rez-i)*0.125 );
+      yofs += 0.5 * sin( t + (rez+j)*0.125 + (rez+i)*0.125 );
+            
+
+      //setcol(0x3556d9);
+      setcol( 255+yofs*-127,255+yofs*127,255 ) ; 
+      
+      x = i ;
+      y = yofs;
+      z = j ;
+      drawsph(x,y,z,.1);
+      
+      
+      vertx[idx] = x;
+      verty[idx] = y;
+      vertz[idx] = z;
+      idx++;
+      
+      
+      
+      yofs *= 128;
+      setcol(yofs,yofs,yofs);
+      setpix(32+i,32+j);
+      
+
+   }
+   
+   //glBegin(GL_QUADS);
+   setcol(0xffffff);
+   idx=0;
+   for(i=0; i<63; i++)
+   {
+      for(j=0; j<64; j++)
+      {
+         
+         //if(i<63)
+         {
+         //moveto( vertx[idx], verty[idx], vertz[idx] );
+         //lineto( vertx[idx+1], verty[idx+1], vertz[idx+1] );
+
+         //moveto( vertx[idx], verty[idx], vertz[idx] );
+         //lineto( vertx[idx+64], verty[idx+64], vertz[idx+64] );
+         
+         setcol(i*4,j*4,0);
+         //glVertex( vertx[idx], verty[idx], vertz[idx] );
+         //glVertex( vertx[idx+64], verty[idx+64], vertz[idx+64] );
+         //glVertex( vertx[idx+64+1], verty[idx+64+1], vertz[idx+64+1] );
+         //glVertex( vertx[idx+1], verty[idx+1], vertz[idx+1] );         
+
+
+         }
+         idx++;
+
+      }
+
+   }
+   
+   
+
+   ang = mousx/xres*2*PI;
+   r = -50;
+   setcam(r*sin(ang),-40,r*cos(ang),ang, 40*PI/180);
+   //setcam(0,-25,-70, 0,0);
+
+   setcol(255,255,255);
+   moveto(0,150);
+   printf("%g", t);
+}

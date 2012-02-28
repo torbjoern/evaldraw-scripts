@@ -1,0 +1,61 @@
+static x[926];
+static maxRand = 926;
+
+()
+{
+   if( numframes == 0) myrand(0);
+      
+   cls(0);
+   
+   setcol(0xffffff);
+   moveto(100,50);
+   
+   printf("Random number generators %g \n", 0 );
+   
+   moveto(100,80);
+   printf("Simple LGC\nwith a period\nof 926..." );
+   
+   for(i=0; i<1000; i++)
+   {
+      setcol(0xff0000);
+      x = 100+getRand() % 100; //nrnd*60;
+      y = 100+getRand() % 100; //nrnd*60;
+      moveto( x,y);
+      lineto( x+1,y );
+   } 
+   
+   moveto(250,80);
+   printf("Built in RND()" );
+   for(i=0; i<1000; i++)
+   {
+      setcol(0xff0000);
+      x = 250+rnd*100;
+      y = 100+rnd*100;
+      moveto( x,y);
+      lineto( x+1,y );
+   } 
+       
+   
+}
+
+myRand(pos)
+{
+   a = 10;
+   b = 20;
+   c = maxrand;
+   x1 =0;
+   x[0] = x1;
+   for(i=1; i< maxrand; i++)
+   {
+      x[i] = (a+b*x[i-1]) % c;
+   }   
+   return x[pos];   
+}
+
+getrand()
+{
+   static pointerPosition = 0;
+   pointerPosition++;
+   pointerPosition = pointerPosition % maxRand;
+   return x[pointerPosition];
+}

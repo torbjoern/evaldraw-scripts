@@ -1,0 +1,52 @@
+(x,y,z,&r,&g,&b)
+{
+   nx=0; ny=0; nz=0;
+   gradient(x,y,z,nx,ny,nz);
+   normalize(nx,ny,nz);
+   
+   r=128+(nx)*127;
+   g=128+(ny)*127;
+   b=128+(nz)*127;
+   
+   return func(x,y,z);
+}
+
+func(x,y,z)
+{
+
+   sphere = .5*( (x - .5)^2 + (y - .5)^2 + (z - .5)^2 );
+   box = x^6 + y^6 + z^6 - .2;
+   
+   // Combine the two shapes
+   v = union( sphere , box);
+   
+   lim = 8/voxres;
+   return abs(v-lim) < lim;
+   
+   
+}
+
+gradient(x,y,z,&nx,&ny,&nz)
+{
+   s = 4/voxres;
+   nx = func(x-s,y,z) - func(x+s,y,z);
+   ny = func(x,y-s,z) - func(x,y+s,z);
+   nz = func(x,y,z-s) - func(x,y,z+s);  
+}
+
+normalize(&nx,&ny,&nz)
+{
+   rlen = 1/sqrt(nx^2 + ny^2 + nz^2);
+   nx*=rlen; ny*=rlen; nz*=rlen;
+}
+union(a,b){
+   min(a,b);
+}
+
+isect(a,b){
+   max(a,b);
+}
+
+diff(a,b){
+   max(a,-b);
+}

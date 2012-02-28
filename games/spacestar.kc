@@ -1,0 +1,615 @@
+static gamearea = 100;
+
+// minable roids
+struct {x,y,ax,ay,vx,vy,life,mass,hitCount,releaseCooldown} roid;
+enum{MAX_ROIDS = 100}
+static roid roids[MAX_ROIDS];
+static roidradi = 1;
+
+// minable roids
+struct {x,y,ax,ay,vx,vy,life,mass} s_mineral;
+enum{MAX_MINERALS = 100}
+static s_mineral minerals[MAX_ROIDS];
+static mineralradi = 0.5;
+
+struct {x,y,z} s_player;
+static s_player player;
+
+// evil, red workers
+enum{WANDER,SEEKING,BUMPING,GATHER,TRANSPORTING}
+struct {x,y,ax,ay,vx,vy,life,mass,targetRoid,state} s_worker;
+enum{MAX_WORKERS=100}
+static s_worker workers[MAX_WORKERS];
+static workerRadi = 1;
+
+
+static tim,oldtim,dt;
+()
+{
+   tim = klock(0); dt = oldtim-tim; oldtim = tim;
+   
+   cls(0); clz(1e32);
+
+   setcam(player.x, player.y, player.z, 0, 0);   
+   dx = keystatus[203]-keystatus[205];
+   dy = keystatus[200]-keystatus[208];
+   spd = 10;
+   player.x += dx*spd*dt;
+   player.y += dy*spd*dt;
+
+   if(numframes==0)
+   {
+      player.z = -50;
+      for(i=0; i<MAX_ROIDS; i++)
+      {
+         roids[i].x = rnd*gamearea;
+         roids[i].y = rnd*gamearea;
+         roids[i].life = 1;
+         roids[i].mass = 1000;
+      }
+      
+      for(i=0; i<MAX_WORKERS; i++){
+         workers[i].x = gamearea*.5;
+         workers[i].y = gamearea*.5;
+         workers[i].life = -1;
+         workers[i].mass = 1;
+         workers[i].state = WANDER;
+      }
+   }
+
+
+
+   for(i=0; i<MAX_ROIDS; i++)
+   {
+      if(roids[i].life > 0)
+      {
+         c=128;
+         setcol(c,c,c);
+         drawsph(roids[i].x, roids[i].y,0, roidradi);
+         
+         if(roids[i].hitCount >= 2)
+         {
+            roids[i].hitCount = 0;
+            if( roids[i].releaseCooldown < tim )
+            {
+               roids[i].releaseCooldown = tim + .5;
+               roids[i].life-=0.1;
+               
+               spawnMinerals(i);
+            }
+         }
+      }
+   }
+   
+   setcol(255,255,0);
+   for(i=0; i<MAX_MINERALS; i++)
+   {
+      if(minerals[i].life > 0)
+      {
+         drawsph(minerals[i].x, minerals[i].y,0, mineralRadi);
+      }
+   }
+   
+     
+   for(i=0; i<MAX_WORKERS; i++)
+   {
+      if(workers[i].life <= 0)
+      {
+         continue;
+      }
+      
+      // find closest and do collision response
+      mind = 1e32;
+      closestRoid = -1;
+      //findClosestRoid();
+      for(j=0; j<MAX_ROIDS; j++)
+      {
+         if( roids[j].life > 0 )
+         {
+            dx = roids[j].x - workers[i].x;
+            dy = roids[j].y - workers[i].y;
+            d = dx*dx + dy*dy;
+            if( d < mind ){ mind = d; closestRoid = j; }
+         }
+      }
+      if( closestRoid != -1 )
+      {
+         // COLLISION
+         colDist = roidradi^2 + workerRadi^2;
+         if( mind < colDist )
+         {
+            dx = (roids[closestRoid].x - workers[i].x);
+            dy = (roids[closestRoid].y - workers[i].y);
+            len = sqrt(dx*dx+dy*dy);
+            //workers[i].vx -= dt*2*dx/len;
+            //workers[i].vy -= dt*2*dy/len;
+         }
+      }
+      
+      // "AI"
+      if(workers[i].state == WANDER)
+      { 
+         if( closestRoid != -1 )
+         {
+            workers[i].targetRoid = closestRoid;
+            workers[i].state = SEEKING;
+         }else{
+            workers[i].vx = 0;
+            workers[i].vy = 0;
+         }
+      }else if(workers[i].state == SEEKING)
+      {
+         targ = workers[i].targetRoid;
+         if( roids[targ].life <= 0 )
+         {
+            workers[i].state = WANDER;
+         }else
+         {
+            gotoTarget(i,roids[targ].x, roids[targ].y );
+         }
+         
+         // Look for minerals
+         mind = 1e32;
+         closestMineral = -1;
+         for(j=0; j<MAX_MINERALS; j++)
+         {
+            if( minerals[j].life > 0 )
+            {
+               dx = minerals[j].x - workers[i].x;
+               dy = minerals[j].y - workers[i].y;
+               d = dx*dx + dy*dy;
+               if( d < mind ){ mind = d; closestMineral = j; }
+            }
+         }
+         if( closestMineral != -1)
+         {
+            if( mind < 4*4 ) // only hun minerals in x radi
+            {
+            workers[i].state = GATHER;
+            workers[i].targetRoid = closestMineral;
+            }
+         }
+      }else if(workers[i].state == GATHER)
+      {
+        targ = workers[i].targetRoid;
+        distToTarget = gotoTarget(i, minerals[targ].x, minerals[targ].y );
+        if( distToTarget < 2 )
+        {
+           minerals[targ].life = 0;
+           playnote(0x90,100,150);
+           workers[i].state = WANDER;
+        }
+      }
+
+      drawWorker(i);
+           
+      //workers[i].x += workers[i].vx*dt;
+      //workers[i].y += workers[i].vy*dt;
+   }
+   player.x = workers[0].x;
+   player.y = workers[0].y;
+   
+   ballPhysics();
+   integrateMotion();
+   
+   if(keystatus[57] )
+   {
+      keystatus[57] = 0;
+      for(i=0; i<MAX_WORKERS; i++)
+      {
+         if( workers[i].life <= 0 )
+         {
+            workers[i].life = 1;
+            workers[i].state = WANDER;
+            break;
+         }
+      }
+   }
+}
+
+gotoTarget(i, tx,ty)
+{
+   drawcone(workers[i].x, workers[i].y, 0, .08,
+                      tx, ty, 0, .08);
+   dx = tx - workers[i].x;
+   dy = ty - workers[i].y;
+   len = sqrt(dx*dx+dy*dy);
+   // a = F/M
+   spd = 10;
+   workers[i].vx = -spd*dx/len;
+   workers[i].vy = -spd*dy/len;   
+   return len;            
+}
+
+integrateMotion()
+{
+   for(i=0; i<MAX_ROIDS; i++)
+   {
+      tempx = roids[i].ax * dt;
+      roids[i].x = roids[i].x + dt*( roids[i].vx+tempx/2 );  
+      roids[i].vx = roids[i].vx + tempx;
+      
+      
+      tempy = roids[i].ay*dt;
+      roids[i].y = roids[i].y + dt*(roids[i].vy+tempy/2);
+      roids[i].vx = roids[i].vy + tempy;
+   }
+   
+   for(i=0; i<MAX_MINERALS; i++)
+   {
+      if(minerals[i].life <= 0) continue;
+      tempx = minerals[i].ax * dt;
+      minerals[i].x = minerals[i].x + dt*( minerals[i].vx+tempx/2 );  
+      minerals[i].vx = minerals[i].vx + tempx;
+      
+      
+      tempy = roids[i].ay*dt;
+      minerals[i].y = minerals[i].y + dt*(minerals[i].vy+tempy/2);
+      minerals[i].vx = minerals[i].vy + tempy;
+      
+      minerals[i].vx *= 0.98;
+      minerals[i].vy *= 0.98;
+   }
+   
+   for(i=0; i<MAX_WORKERS; i++)
+   {
+      if(workers[i].life <= 0) continue;
+      
+      tempx = workers[i].ax * dt;
+      workers[i].x = workers[i].x + dt*( workers[i].vx+tempx/2 );  
+      workers[i].vx = workers[i].vx + tempx;
+      
+      
+      tempy = workers[i].ay*dt;
+      workers[i].y = workers[i].y + dt*( workers[i].vy+tempy/2);
+      workers[i].vx = workers[i].vy + tempy;
+      
+      workers[i].ax *= 0.98;
+      workers[i].ay *= 0.98;
+   }
+}
+
+
+
+drawWorker(i)
+{
+   x = workers[i].x;
+   y = workers[i].y;
+   dx = workers[i].vx;
+   dy = workers[i].vy;
+   ang = pi+atan2(dx, dy);
+   
+   if(workers[i].state == WANDER) setcol(128,128,0);
+   if(workers[i].state == SEEKING) setcol(255,0,0);
+   if(workers[i].state == GATHER) setcol(255,0,rnd*255);
+   drawsph(x,y,0,1); 
+
+   x1=0; y1=0; z1=0;
+   x2=0; y2=0; z2=0;
+
+
+   rotPointZ(-1,-1,0,ang,x1,y1,z1); 
+   rotPointZ(-1, 1,0,ang,x2,y2,z2);   
+
+   drawcone(x+x1,y+y1,z2,.2,x+x2,y+y2,z2,.2);
+   
+   rotPointZ(1,-1,0,ang,x1,y1,z1); 
+   rotPointZ(1,1,0,ang,x2,y2,z2); 
+   
+   drawcone(x+x1,y+y1,z2,.2,x+x2,y+y2,z2,.2);
+}
+
+rotPointZ(x,y,z,phi,&x2,&y2,&z2)
+{
+   c = cos(phi);  s = sin(phi);
+   x2 = x*c + y*s;
+   y2 = x*-s + y*c;
+   z2 = z;   
+}
+
+spawnMinerals(fromRoid)
+{
+   spawnCount = 0;
+   numToSpawn = 2;
+   spreadRadi = roidRadi * 2;
+   for(i=0; i<MAX_MINERALS; i++)
+   {
+      if( minerals[i].life <= 0 )
+      {
+         minerals[i].life = 1;
+         //ang = spawnCount * 2*PI / numToSpawn;
+         ang = rnd*2*PI;
+         minerals[i].x = roids[fromRoid].x + cos(ang)*spreadRadi;
+         minerals[i].y = roids[fromRoid].y + sin(ang)*spreadRadi;
+         minerals[i].vx = (minerals[i].x - roids[fromRoid].x)*4;
+         minerals[i].vy = (minerals[i].y - roids[fromRoid].y)*4;
+         minerals[i].mass = 1;
+         spawnCount++;  
+      }
+      if( spawnCount >= numToSpawn ) break;
+   }
+}
+
+ballPhysics(){
+   static e = 0.2; // restitution. plastic < 1, elastic = 1
+   collisions = 0;
+   for(a=0; a<MAX_ROIDS; a++)
+   {
+      for(b=0; b<MAX_WORKERS; b++)
+      {
+         if(roids[a].life <= 0 || workers[b].life <=0 ) continue;
+         
+         // if  A&B are close enough to collide
+
+         d = (roids[a].x-workers[b].x)^2 + (roids[a].y-workers[b].y)^2;
+         collDist = workerRadi*2 + roidRadi*2;
+         if(d < collDist )
+         {
+            collisions++;
+            d = sqrt(d);
+            vxa = roids[a].vx; vya = roids[a].vy;
+            vxb = workers[b].vx; vyb = workers[b].vy;
+            // Normal
+            nx = workers[b].x - roids[a].x;
+            ny = workers[b].y - roids[a].y;
+            // Any collision?
+            if( fabs(d) > 0.00001)
+            { 
+               roids[a].hitCount++;
+               
+
+               len = sqrt(nx*nx+ny*ny);
+               // F=ma, a = f/m
+               if( dt < 0.2 ){
+               workers[b].ax += 20000*(nx/len)/workers[b].mass;
+               workers[b].ay += 20000*(ny/len)/workers[b].mass; 
+               playnote(0x99,36,64);
+               }
+               
+
+               // Collision depth           
+               cdx = (nx/d);
+               cdy = (ny/d);
+               
+               dd = workerRadi+roidRadi - d;
+               // Move appart
+               roids[a].x -= dd*cdx;
+               roids[a].y -= dd*cdy;
+               workers[b].x += dd*cdx;
+               workers[b].y += dd*cdy; 
+                
+               // Magnitude of velocity, obj A
+               m = sqrt( roids[a].vx^2 + roids[a].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  // Impact speed
+                  cosam = cdx*roids[a].vx + cdy*roids[a].vy * e;
+                  vxa -= cdx*cosam / roids[a].mass;
+                  vya -= cdy*cosam / roids[a].mass;
+                  vxb += cdx*cosam / workers[b].mass;
+                  vyb += cdy*cosam / workers[b].mass;
+               }
+               // Magnitude vel obj B
+               m = sqrt( workers[b].vx^2 + workers[b].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  cosam = cdx*workers[b].vx + cdy*workers[b].vy * e;
+                  vxa += cdx*cosam / roids[a].mass;
+                  vya += cdy*cosam / roids[a].mass;
+                  vxb -= cdx*cosam / workers[b].mass;
+                  vyb -= cdy*cosam / workers[b].mass;
+               }
+            }
+            
+            roids[a].vx = vxa;
+            roids[a].vy = vya;
+            workers[b].vx = vxb;
+            workers[b].vy = vyb; 
+         }    
+      }
+   }
+   
+// Roid vs roid
+   for(a=0; a<MAX_ROIDS; a++)
+   {
+      for(b=0; b<MAX_ROIDS; b++)
+      {
+         if(roids[a].life <= 0 || roids[b].life <=0 ) continue;
+         
+         // if  A&B are close enough to collide
+
+         d = (roids[a].x-roids[b].x)^2 + (roids[a].y-roids[b].y)^2;
+         collDist = workerRadi*2 + roidRadi*2;
+         if(d < collDist )
+         {
+            collisions++;
+            d = sqrt(d);
+            vxa = roids[a].vx; vya = roids[a].vy;
+            vxb = roids[b].vx; vyb = roids[b].vy;
+            // Normal
+            nx = roids[b].x - roids[a].x;
+            ny = roids[b].y - roids[a].y;
+            if( fabs(d) > 0.00001)
+            { 
+               // Collision depth           
+               cdx = (nx/d);
+               cdy = (ny/d);
+               
+               dd = workerRadi+roidRadi - d;
+               // Move appart
+               roids[a].x -= dd*cdx;
+               roids[a].y -= dd*cdy;
+               roids[b].x += dd*cdx;
+               roids[b].y += dd*cdy; 
+                
+               // Magnitude of velocity, obj A
+               m = sqrt( roids[a].vx^2 + roids[a].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  // Impact speed
+                  cosam = cdx*roids[a].vx + cdy*roids[a].vy * e;
+                  vxa -= cdx*cosam / roids[a].mass;
+                  vya -= cdy*cosam / roids[a].mass;
+                  vxb += cdx*cosam / roids[b].mass;
+                  vyb += cdy*cosam / roids[b].mass;
+               }
+               // Magnitude vel obj B
+               m = sqrt( roids[b].vx^2 + roids[b].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  cosam = cdx*roids[b].vx + cdy*roids[b].vy * e;
+                  vxa += cdx*cosam / roids[a].mass;
+                  vya += cdy*cosam / roids[a].mass;
+                  vxb -= cdx*cosam / roids[b].mass;
+                  vyb -= cdy*cosam / roids[b].mass;
+               }
+            }
+            
+            roids[a].vx = vxa;
+            roids[a].vy = vya;
+            roids[b].vx = vxb;
+            roids[b].vy = vyb; 
+                      
+         }    
+      }
+   }
+   
+// worker vs worker
+   for(a=0; a<MAX_WORKERS; a++)
+   {
+      if(workers[a].life <= 0) continue;
+      for(b=0; b<MAX_WORKERS; b++)
+      {
+         if(workers[a].life <= 0) continue;
+         
+         if(a==b) continue;
+         
+         // if  A&B are close enough to collide
+
+         d = (workers[a].x-workers[b].x)^2 + (workers[a].y-workers[b].y)^2;
+         collDist = workerRadi*2 + roidRadi*2;
+         if(d < collDist )
+         {
+            collisions++;
+            d = sqrt(d);
+            vxa = workers[a].vx; vya = workers[a].vy;
+            vxb = workers[b].vx; vyb = workers[b].vy;
+            // Normal
+            nx = workers[b].x - workers[a].x;
+            ny = workers[b].y - workers[a].y;
+            if( fabs(d) > 0.00001)
+            { 
+               // Collision depth           
+               cdx = (nx/d);
+               cdy = (ny/d);
+               
+               dd = workerRadi+roidRadi - d;
+               // Move appart
+               workers[a].x -= dd*cdx;
+               workers[a].y -= dd*cdy;
+               workers[b].x += dd*cdx;
+               workers[b].y += dd*cdy; 
+                
+               // Magnitude of velocity, obj A
+               m = sqrt( workers[a].vx^2 + workers[a].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  // Impact speed
+                  cosam = cdx*workers[a].vx + cdy*workers[a].vy * e;
+                  vxa -= cdx*cosam / workers[a].mass;
+                  vya -= cdy*cosam / workers[a].mass;
+                  vxb += cdx*cosam / workers[b].mass;
+                  vyb += cdy*cosam / workers[b].mass;
+               }
+               // Magnitude vel obj B
+               m = sqrt( workers[b].vx^2 + workers[b].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  cosam = cdx*workers[b].vx + cdy*workers[b].vy * e;
+                  vxa += cdx*cosam / workers[a].mass;
+                  vya += cdy*cosam / workers[a].mass;
+                  vxb -= cdx*cosam / workers[b].mass;
+                  vyb -= cdy*cosam / workers[b].mass;
+               }
+            }
+            
+            workers[a].vx = vxa;
+            workers[a].vy = vya;
+            workers[b].vx = vxb;
+            workers[b].vy = vyb; 
+                      
+         }    
+      }
+   }
+   
+// Mineral vs roid
+   for(a=0; a<MAX_ROIDS; a++)
+   {
+      if( roids[a].life <= 0)  continue;
+      for(b=0; b<MAX_MINERALS; b++)
+      {
+         if( minerals[b].life <= 0)  continue;
+         
+         // if  A&B are close enough to collide
+
+         d = (roids[a].x-minerals[b].x)^2 + (roids[a].y-minerals[b].y)^2;
+         collDist = workerRadi*2 + roidRadi*2;
+         if(d < collDist )
+         {
+            collisions++;
+            d = sqrt(d);
+            vxa = roids[a].vx; vya = roids[a].vy;
+            vxb = minerals[b].vx; vyb = minerals[b].vy;
+            // Normal
+            nx = minerals[b].x - roids[a].x;
+            ny = minerals[b].y - roids[a].y;
+            // Any collision?
+            if( fabs(d) > 0.00001)
+            { 
+               // Collision depth           
+               cdx = (nx/d);
+               cdy = (ny/d);
+               
+               dd = workerRadi+roidRadi - d;
+               // Move appart
+               roids[a].x -= dd*cdx;
+               roids[a].y -= dd*cdy;
+               minerals[b].x += dd*cdx;
+               minerals[b].y += dd*cdy; 
+               /*
+                
+               // Magnitude of velocity, obj A
+               m = sqrt( roids[a].vx^2 + roids[a].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  // Impact speed
+                  cosam = cdx*workers[a].vx + cdy*workers[a].vy * e;
+                  vxa -= cdx*cosam / roids[a].mass;
+                  vya -= cdy*cosam / roids[a].mass;
+                  vxb += cdx*cosam / minerals[b].mass;
+                  vyb += cdy*cosam / minerals[b].mass;
+               }
+               // Magnitude vel obj B
+               m = sqrt( workers[b].vx^2 + workers[b].vy^2 );
+               if(fabs(m) > 0.0001)
+               {
+                  cosam = cdx*workers[b].vx + cdy*workers[b].vy * e;
+                  vxa += cdx*cosam / roids[a].mass;
+                  vya += cdy*cosam / roids[a].mass;
+                  vxb -= cdx*cosam / minerals[b].mass;
+                  vyb -= cdy*cosam / minerals[b].mass;
+               }*/
+            }
+            
+            
+            // only move apart, dont mod vel
+            //roids[a].vx = vxa;
+            //roids[a].vy = vya;
+            //minerals[b].vx = vxb;
+            //minerals[b].vy = vyb; 
+         }    
+      }
+   }
+
+}
+

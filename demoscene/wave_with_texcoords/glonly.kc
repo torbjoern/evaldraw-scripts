@@ -1,0 +1,321 @@
+enum{imgW = 468, imgH =468, tileSiz = 30} //jelyfish values. adjust these according to the image size
+//enum{imgW = 640, imgH =480, tileSiz = 40} // adjust these according to the image size
+enum{W=imgW/(tileSiz), H=imgH/(tileSiz) };
+
+static offsX[W][H]; // The points we aggitate on screen
+static offsY[W][H];
+static offsXV[W][H]; // points velocity
+static offsYV[W][H];
+static offsXacc[W][H]; // points acceleration
+static offsYacc[W][H];
+static texture[imgW][imgH]; // texture loaded.
+   
+static norms[3][3] =
+{
+   0, tileSiz, tileSiz*2,
+   tileSiz*2, tileSiz*1.414214, tileSiz*2.236068,
+   tileSiz*2, tileSiz*2.236068, tileSiz*2*1.414214
+};
+
+// Tweak em!
+static useImg = 0; // use pic or generated texture
+static randNodeStart = 0;
+static springDampning = 1;
+static elasticity = 0.000001;
+static dampning = 0.999;
+
+()
+{
+   cls(0); clz(1e32);
+
+   if(numframes==0)
+   {
+      init();
+      {
+         for(x=0; x<imgW; x++)
+         for(y=0; y<imgH; y++)
+         {
+            if(useImg==1) texture[x][y] = pic("deep-sea-glass-squid.jpg",x,y);  
+            else texture[x][y] = pic(x,y);
+         }
+      }  
+   }
+   static screen[imgh][imgw]; // contains texture to fill screen.
+   
+
+   if(numframes==0)
+   {
+      for(x=0; x<imgw; x++)
+      for(y=0; y<imgh; y++)
+      {
+         screen[y][x] = texture[x][y]; //swap x,y
+      }
+      t = glsettex(screen,imgw,imgh);
+   }
+
+   time = klock(0);
+   setcol(0xffffff);
+
+   // fast!
+   perfOgl = klock();
+   //t = glsettex(screen,imgw,imgh); // EXPENSIVE!
+      
+      texquad2(0,0,xres,yres);
+      //texquad2(0,0,xres/2,yres/2);
+   //glremovetex(t);
+   
+   // end of fast
+   
+
+   //t = glsettex(texture,imgw,imgh);
+      //texquad2(xres/2,0,xres/2,yres/2);
+   //glremovetex(t);
+   
+   perfOgl = klock()-perfOgl;
+
+   
+
+   perfGrid = klock();
+   for(i=0; i<10; i++)
+   {Relax();}   
+   agitateGrid();   
+   drawGrid();
+   perfGrid = klock() - perfGrid;
+   
+   tot = perfOgl+ perfGrid;
+   partOgl = perfOgl/tot;
+   partGrid = perfGrid/tot;
+
+   for(i=0; i<2; i++)
+   {
+      setcol(0xffff00);
+      moveto(0, yres-5 -i);
+      lineto(partOgl*xres, yres-5 -i);
+   
+      setcol(0xff0000);
+      moveto(partOgl*xres, yres-5 -i);
+      lineto(partOgl*xres+partGrid*xres, yres-5 -i);   
+   } 
+   
+   wid=0; hei=0;
+   getpicsiz(wid,hei);
+    
+  // moveto(0,0); Printf("pix siz: %gx%g",wid, hei);
+}
+
+texquad2(tx,ty,width,height)
+{
+   setcol(0xffffff);
+   
+   
+   xscale = imgw;//xres/(W*tileSiz); // or imgw?
+   yscale = imgh;//yres/(H*tileSiz);
+   
+   xscale = xres/(W*tileSiz); // or imgw?
+   yscale = yres/(H*tileSiz);
+   
+   xVertScale = (width/(W-1));  
+   yVertScale = (height/(H-1)); 
+   
+   xTexScale = imgw;
+   yTexScale = imgh;
+
+
+   glBegin(GL_POLYGON);   
+   for(x=0; x<W-1; x++)
+   {
+   for(y=0; y<H-1; y++) 
+   {
+      // offsX inneholder pixler coords!
+      Ax=offsX[x][y] ;
+      Ay=offsY[x][y] ;
+      
+      Bx=offsX[x+1][y] ;
+      By=offsY[x+1][y] ;
+      
+      Cx=offsX[x+1][y+1] ;
+      Cy=offsY[x+1][y+1] ;
+
+      Dx=offsX[x][y+1] ;
+      Dy=offsY[x][y+1] ;
+
+      // Tex coords are warped, but vertexes are where they should be.
+      glTexCoord(Ax/xTexScale, Ay/yTexScale);  glVertex(tx+ x*xVertScale, ty+ y*yVertScale);  
+      glTexCoord(Bx/xTexScale, By/yTexScale);  glVertex(tx+  (x+1)*xVertScale, ty+ y*yVertScale);  
+      glTexCoord(Cx/xTexScale, Cy/yTexScale);  glVertex(tx+ (x+1)*xVertScale, ty+ (y+1)*yVertScale);
+      glTexCoord(Dx/xTexScale, Dy/yTexScale);  glVertex(tx+  x*xVertScale, ty+ (y+1)*yVertScale);
+      /*
+      setcol(0xff0000);
+      drawsph( x* (xres/W), y*(yres/W), 4);
+      drawsph( (x+1)*(xres/W), y*(yres/W), 4);
+      drawsph( (x+1)*(xres/W), (y+1)*(yres/W), 4);
+      drawsph( x*(xres/W), (y+1)*(yres/W), 4);
+      */
+      /*
+      setcol(0xff0000);
+      drawsph( Ax*xscale, Ay*yscale, 4);
+      drawsph( Bx*xscale, By*yscale, 4);
+      drawsph( Cx*xscale, Cy*yscale, 4);
+      drawsph( Dx*xscale, Dy*yscale, 4);
+      */
+      
+      glnextcontour(); // does what exactly???
+   }
+   }
+   glEnd();
+}
+drawGrid(){
+   xscale = xres/(W*tileSiz);
+   yscale = yres/(H*tileSiz);
+   for(x=0; x<W; x++)
+   for(y=0; y<H; y++)
+   {
+      c=255; setcol(c,c,c);
+      setpix( offsX[x][y]*xscale, offsY[x][y]*yscale);
+   }
+}
+
+agitateGrid(){
+   direction = 0;
+   if(bstatus == 1)
+   {
+      direction = .5;
+   }
+   else if(bstatus == 2)
+   {
+      direction = -.5;
+   }
+   if(direction != 0)
+   for(x=0; x<W; x++)
+   for(y=0; y<H; y++)
+   {
+      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
+      {
+         // dont disturb edge nodes
+      }
+      else{
+      mx = mousx*W/xres;
+      my = mousy*H/yres;
+
+      xp = x;
+      yp = y;
+      //if(xp < mx+30 && xp > mx-30)
+      //if(yp < my+30 && yp > my-30)
+      distToPoint = abs( (mx-xp)^2 + (my-yp)^2 );
+      
+      if(distToPoint < 3)
+      {
+         d = atan2(yp-my, xp-mx);
+         //dist = ( (xp-mx)^2 + (yp-my)^2);
+         
+         //offsX[x][y] += direction*cos(d) * min(.5, max(0,dist) );
+         //offsY[x][y] += direction*sin(d) * min(.5, max(0,dist) );
+         
+         offsX[x][y] += 5*direction*cos(d);
+         offsY[x][y] += 5*direction*sin(d);
+      }
+      }
+   } 
+}
+
+Init()
+{
+   for(y=0; y<H; y++)
+   for(x=0; x<W; x++)
+   {
+      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
+      {
+         offsX[x][y] = x*tileSiz;
+         offsY[x][y] = y*tileSiz;
+         offsXv[x][y] = 0;
+         offsYv[x][y] = 0;
+      }
+      else
+      {
+         offsX[x][y] = x*tileSiz;
+         offsY[x][y] = y*tileSiz;
+         if(randNodeStart==1)
+         {
+            offsX[x][y] += nrnd*2;
+            offsY[x][y] += nrnd*2;
+         }         
+
+         offsXv[x][y] = 0;
+         offsYv[x][y] = 0;
+      }     
+      offsXacc[x][y] = 0;
+      offsYacc[x][y] = 0;
+   }
+}
+
+Relax()
+{
+   for(y=1; y<H-1; y++)
+   {
+      yh = y+2;
+      yl = y-2;
+      if(yl<0) yl=0;
+      if(yh>H-1) yh = H-1;
+      
+      for(x=1; x<W-1; x++)
+      {
+         xh = x+2;
+         xl = x-2;
+         if(xl<0) xl=0;
+         if(xh>W-1) xh=W-1;
+      
+         for(yi=yl; yi<=yh; yi++)
+         {
+            for(xi=xl; xi<=xh; xi++)
+            {
+               if( (xi != x) || (yi != y) )
+               {
+                  xspring = offsX[xi][yi] - offsX[x][y];
+                  yspring = offsY[xi][yi] - offsY[x][y];
+                  
+                  norm = norms[abs(xi-x)][abs(yi-y)];
+                  length = sqrt(xspring^2 + yspring^2);
+                  scaler = (norm-length) * elasticity; //tweak
+                  
+                  xspring *= scaler;
+                  yspring *= scaler;
+                  
+                  offsXv[xi][yi] += xspring;
+                  offsYv[xi][yi] += yspring;
+                  
+                  offsXv[xi][yi] *= springDampning;
+                  offsYv[xi][yi] *= springDampning;
+               }   
+            }
+         }
+      }
+   }
+
+   for(y=1; y<H-1; y++)
+   for(x=1; x<W-1; x++)
+   {
+      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
+      {
+      }
+      else
+      {
+         offsX[x][y] += offsXv[x][y];
+         offsY[x][y] += offsYv[x][y];
+         offsXv[x][y] *= dampning;
+         offsYv[x][y] *= dampning;
+      }
+
+   }
+   
+   // make sure points on the grid never stray outside screen
+   for(x=0; x<W-1; x++)
+   {
+      if( offsY[x][1] < 0 ) offsY[x][1] = 0;
+      if( offsY[x][H-2] > imgH ) offsY[x][H-2] = imgH;
+   }
+   for(y=0; y<H-1; y++)
+   {
+      if( offsX[1][y] < 0 ) offsX[1][y] = 0;
+      if( offsX[W-2][y] > imgW ) offsX[W-2][y] = imgW;
+   }
+}
