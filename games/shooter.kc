@@ -43,7 +43,8 @@ static particle_life[16][MAX_PARTICLES];
 static hang[16];
 static vang[16];
 static playercolor[16];
-struct p3d_t{x,y,z;};
+
+struct vec{x,y,z;};
 
 // LEVEL LOAD
 static scalefactor = 3e4;
@@ -251,17 +252,17 @@ do_collision()
       //if( len==0 ) continue;
 
    player = net_me;
-   p3d_t playerpos;
+   vec playerpos;
    playerpos.x = posx[player];
    playerpos.y = posy[player];
    playerpos.z = posz[player];
    
-   p3d_t playerdir;
+   vec playerdir;
    playerdir.x = pdx[player];
    playerdir.y = pdy[player];
    playerdir.z = pdz[player];
    
-   p3d_t offset;
+   vec offset;
    offset.x = 0;
    offset.y = 0;
    offset.z = 0;
@@ -276,7 +277,7 @@ do_collision()
    }
 }
 
-collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
+collideLevel( vec playerpos, vec vel, vec collideOffset, radi, type )
 {
    hasisected = 0;
    has_collided = 0;
@@ -285,22 +286,8 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
    for(i=0; i<numpts; i+=3)
    {
       distance = 0;
-      p3d_t tript;
-      for(k=0; k<3; k++)
-      {
-      tript.x += pts[i+k].x;
-      tript.y += pts[i+k].y;
-      tript.z += pts[i+k].z;
-      }
-      tript.x /= 3;
-      tript.y /= 3;
-      tript.z /= 3;
-      tript.x = pts[i+0].x;
-      tript.y = pts[i+0].y;
-      tript.z = pts[i+0].z;
-      
 
-      p3d_t norm;
+      vec norm;
       norm.x = normals[j].x;
       norm.y = normals[j].y;
       norm.z = normals[j].z;    
@@ -318,7 +305,7 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
       }
       #endif
         
-         p3d_t tri[3];
+         vec tri[3];
          tri[0].x = pts[i+0].x;
          tri[0].y = pts[i+0].y;
          tri[0].z = pts[i+0].z;
@@ -336,7 +323,7 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
             playerpos, 
             vel,
             norm, 
-            tript,
+            pts[i+0], // any pt should do
             radi, distance );
             
       if(0)
@@ -356,11 +343,11 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
       #ifdef TEST_POLY
       if ( isects )
       {
-         p3d_t offset;
+         vec offset;
          offset.x = norm.x * distance;
          offset.y = norm.y * distance;
          offset.z = norm.z * distance;
-         p3d_t isect;
+         vec isect;
          isect.x = playerpos.x - offset.x;
          isect.y = playerpos.y - offset.y;
          isect.z = playerpos.z - offset.z;    
@@ -368,7 +355,7 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
          e=0;
          
          hitEdge=0;
-         hitPoly = insidepolygon( isect, tri );
+         hitPoly = pointInTriangle3D( isect, tri[0], tri[1], tri[2] );
          if( !hitPoly )
            hitedge = EdgeSphereCollision( playerpos, tri, radi*.5, collideOffset,   e ) ;
          
@@ -429,7 +416,7 @@ collideLevel( p3d_t playerpos, p3d_t vel, p3d_t collideOffset, radi, type )
 
 
 
-sphere_plane_intersect(p3d_t p, p3d_t v, p3d_t n, p3d_t pp, radi, &distance)
+sphere_plane_intersect(vec p, vec v, vec n, vec pp, radi, &distance)
 {
    d = -( (n.x*pp.x) + 
         (n.y*pp.y) + 
@@ -471,30 +458,6 @@ sphere_plane_intersect(p3d_t p, p3d_t v, p3d_t n, p3d_t pp, radi, &distance)
 }
 
 
-/*
-sphere_triangle_collision(p3d_t pos, p3d_t dir, p3d_t tri[3], p3d_t norm, &t)
-{
-      p3d_t vec[2];
-      vec[0].x = pos.x;
-      vec[0].y = pos.y;
-      vec[0].z = pos.z;
-      
-      vec[1].x = pos.x + dir.x;
-      vec[1].y = pos.y + dir.y;
-      vec[1].z = pos.z + dir.z;
-      
-   // (p3d_t poly[3], p3d_t myline[2], p3d_t polynormal, &t)
-      t = 0;
-      if ( IntersectedPolygon(tri, vec, norm, t ) || EdgeSphereCollision( pos, tri, radi*.5, norm ) )
-      {
-         return t;
-      }
-      
-      return 0;
-       
-      
-}
-*/
 
 drawlevel()
 {
@@ -560,16 +523,6 @@ drawlevel()
    setcol(0xffffff);
 }
 
-
-/* converts horizontal and vertical angles to a 3x3 rotation matrix */
-ang2mat(hang,vang,mat[9])
-{
-   mat[0] = cos(hang); mat[1] = 0; mat[2]=-sin(hang);
-   mat[6] = cos(vang)*sin(hang); mat[7] = sin(vang); mat[8]=cos(vang)*cos(hang);
-   mat[3] = mat[7]*mat[2] - mat[8]*mat[1];
-   mat[4] = mat[8]*mat[0] - mat[6]*mat[2];
-   mat[5] = mat[6]*mat[1] - mat[7]*mat[0];
-}
 
 calcNormals()
 {
@@ -743,66 +696,10 @@ readNum(&i, &readSuccess)
    if( isNegative ) num *= -1;
    return num;
 }
-set(p3d_t v,x,y,z)
+
+EdgeSphereCollision(vec center, vec poly[3], radius, vec offset, &e)
 {
-   v.x = x; v.y = y; v.z = z;
-}
-
-linePlaneIntersection(p3d_t linePt, p3d_t lineVec, p3d_t planePt, p3d_t planeNormal, &t)
-{
-   d = dotProduct(lineVec,planeNormal); // u*n
-   if( fabs(d) < 1e-7) return 0; // early escape. u and v are perpendicular and will never isect.
-   p3d_t v; v.x = linePt.x - planePt.x; v.y = linePt.y - planePt.y; v.z = linePt.z - planePt.z; // p-q
-   t = dotProduct(v,planeNormal) / d; // t = ((p-q)*n) / (u*n)
-   return 1;
-}
-
-// returns 1 if collision, and changes t variabel, point on line for collision
-// returns 0 if not collision
-IntersectedPolygon(p3d_t poly[3], p3d_t myline[2], p3d_t polynormal, &t)
-{
-   p3d_t lineStart; 
-   lineStart.x = myLine[0].x;
-   lineStart.y = myLine[0].y;
-   lineStart.z = myLine[0].z;
-   
-   p3d_t lineVec; 
-   lineVec.x = myLine[0].x - myLine[1].x;
-   lineVec.y = myLine[0].y - myLine[1].y;
-   lineVec.z = myLine[0].z - myLine[1].z; 
-   
-   p3d_t planePt1; 
-   planePt1.x = poly[0].x;
-   planePt1.y = poly[0].y;
-   planePt1.z = poly[0].z;
-   
-   hit = linePlaneIntersection( lineStart, lineVec, planePt1, polyNormal, t);
-   if( hit )
-   {
-      if( t < 0 || t > 1) return 0;
-      p3d_t isectPoint;
-      
-      // Linevec ble forstyrra, men gjor bare dotprodukt? :S
-      lineVec.x = myLine[0].x - myLine[1].x;
-      lineVec.y = myLine[0].y - myLine[1].y;
-      lineVec.z = myLine[0].z - myLine[1].z;
-
-      isectPoint.x = myLine[0].x - lineVec.x * (t);
-      isectPoint.y = myLine[0].y - lineVec.y * (t);
-      isectPoint.z = myLine[0].z - lineVec.z * (t);
-      
-      if(InsidePolygon(isectPoint,poly)==1)
-      {
-         return 1;
-      }
-   }
-   return 0;
-}
-
-
-EdgeSphereCollision(p3d_t center, p3d_t poly[3], radius, p3d_t offset, &e)
-{
-   p3d_t vPoint;
+   vec vPoint;
    for(i = 0; i < 3; i++)
    {
       px=0; py=0; pz=0;
@@ -815,7 +712,7 @@ EdgeSphereCollision(p3d_t center, p3d_t poly[3], radius, p3d_t offset, &e)
       if( fabs(distance) < radius) 
       {
          e = i;
-         p3d_t normal;
+         vec normal;
          normal.x = center.x - px;
          normal.y = center.y - py;
          normal.z = center.z - pz;
@@ -835,93 +732,29 @@ EdgeSphereCollision(p3d_t center, p3d_t poly[3], radius, p3d_t offset, &e)
    return 0;
 }
 
-// http://www.blackpawn.com/texts/pointinpoly/default.html
-
-InsidePolygon(p3d_t p,p3d_t poly[3])
+// if using cross products is fastest
+// requires normals to all point in same dir
+// method: Real Time Coll. Det. by C. Ericson
+// expects a ccw triangle ABC
+pointInTriangle3D(vec p, vec a_in, vec b_in, vec c_in)
 {
-   v0x = poly[2].x - poly[0].x;
-   v0y = poly[2].y - poly[0].y;
-   v0z = poly[2].z - poly[0].z;
+   // translate a,b,c and point to origin
+   vec a; vecsub(a, a_in, p );
+   vec b; vecsub(b, b_in, p );
+   vec c; vecsub(c, c_in, p );
    
-   v1x = poly[1].x - poly[0].x;
-   v1y = poly[1].y - poly[0].y;
-   v1z = poly[1].z - poly[0].z;
+   // compute normal vectors for triangles pab, pbc
+   vec u; veccross(u, b, c);
+   vec v; veccross(v, c, a);
+   // make sure they both point in same dir
+   if( vecdot(u,v) < 0.0 ) return 0;
    
-   v2x = p.x - poly[0].x;
-   v2y = p.y - poly[0].y;
-   v2z = p.z - poly[0].z;
-   
-   dot00 = v0x*v0x + v0y*v0y + v0z*v0z;
-   dot01 = v0x*v1x + v0y*v1y + v0z*v1z;
-   dot02 = v0x*v2x + v0y*v2y + v0z*v2z;
-   dot11 = v1x*v1x + v1y*v1y + v1z*v1z;
-   dot12 = v1x*v2x + v1y*v2y + v1z*v2z;
-   invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-   u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-   v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+   // compute normal for triangle pca
+   vec w; veccross(w, a, b );
+   // make sure it points in same dir as first two
+   if( vecdot(u,w) < 0.0 ) return 0;
 
-   // Check if point is in triangle
-   return (u > 0) && (v > 0) && ( (u + v) < 1);
-}
-
-
-/*
-InsidePolygon(p3d_t isectPoint,p3d_t poly[3])
-{
-   MATCH_FACTOR = 0.99; // floatingpoint tolerance
-   angle = 0.0;
-   p3d_t vA;
-   p3d_t vB;
-   
-   for(i=0; i<3; i++)
-   {
-      vA.x = poly[i].x - isectPoint.x;
-      vA.y = poly[i].y - isectPoint.y;
-      vA.z = poly[i].z - isectPoint.z;
-      
-      vB.x = poly[(i+1)%2].x - isectPoint.x;
-      vB.y = poly[(i+1)%2].y - isectPoint.y;
-      vB.z = poly[(i+1)%2].z - isectPoint.z;
-      
-      angle += angleBetweenVectors(vA,vB);
-   }
-   if(angle >= (MATCH_FACTOR * (2.0*PI) )) return 1;
-   return 0;
-}
-*/
-angleBetweenVectors(p3d_t a, p3d_t b)
-{
-   dpr = dotProduct(a,b);
-   vecMagnitude = length(a)*length(b);
-   if(vecMagnitude <= 1e-7) return 0;
-   angle = acos( dpr/vecMagnitude );
-   if( fabs(angle-dpr) <= 1e-7 ) return 0;
-   //if( isNan(angle ) ) return 0; // angle may become NaN if dpr and magnitude are equal. ->acos(1)
-   if( abs(angle) < 1e-7 ) return 0; // no isNan func in evaldraw.
-   return angle; 
-}
-
-length(p3d_t v){
-   return sqrt(v.x^2 + v.y^2 + v.z^2);
-}
-
-normalize(p3d_t v)
-{
-   len = sqrt(v.x^2 + v.y^2 + v.z^2); 
-   if(len)
-   {
-      v.x/=len; v.y/=len; v.z/=len;
-   }
-}
-dotProduct(p3d_t a, p3d_t b)
-{
-   return a.x*b.x + a.y*b.y + a.z*b.z;
-}
-cross(p3d_t a, p3d_t b, p3d_t out)
-{
-   out.x = a.y*b.z - a.z*b.y;
-   out.y = a.z*b.x - a.x*b.z;
-   out.z = a.x*b.y - a.y*b.x;
+   return 1;
 }
 
 closestPtOnLine(px,py,pz, ax,ay,az, bx,by,bz, &cx,&cy,&cz)
@@ -964,17 +797,17 @@ updateBullets()
    {
       if( bullet_life[net_me][i] > 0 )
       {
-         p3d_t playerpos;
+         vec playerpos;
          playerpos.x = bullet_x[i];    
          playerpos.y = bullet_y[i];
          playerpos.z = bullet_z[i];
 
-         p3d_t playerdir;
+         vec playerdir;
          playerdir.x = bullet_vx[i];    
          playerdir.y = bullet_vy[i];
          playerdir.z = bullet_vz[i];        
 
-         p3d_t offset;
+         vec offset;
          if (collideLevel(playerpos, playerdir, offset, .3, 1) )
          {
             bullet_life[net_me][i] = 0;
@@ -995,10 +828,7 @@ updateBullets()
          rotAxis[0] = bullet_vx[net_me][i];
          rotAxis[1] = bullet_vy[net_me][i];
          rotAxis[2] = bullet_vz[net_me][i];
-         //InitRotationMatrix(mtx,angle,rotAxis);
-         
-         //alignToVector( input[3], dir[3] )
-         
+
          static to[3];
          to[0] = bullet_x[net_me][i] + bullet_vx[net_me][i];
          to[1] = bullet_y[net_me][i] + bullet_vy[net_me][i];
@@ -1009,7 +839,8 @@ updateBullets()
          from[1] = bullet_y[net_me][i];
          from[2] = bullet_z[net_me][i];
 
-         lookAt(mtx, to, from);
+         vec worldup; vecset(worldup,0,1,0);
+         lookAt(from, to, worldup, mtx);
 
          drawspr("rpg.kv6", 
          bullet_x[net_me][i], bullet_y[net_me][i], bullet_z[net_me][i],
@@ -1018,11 +849,7 @@ updateBullets()
          mtx[6], mtx[7], mtx[8]
          );
          
-       
          }
-
-         
-
       }
    }
 }
@@ -1048,7 +875,6 @@ createBullet(x,y,z,vx,vy,vz,type)
    }
 
 }
-
 
 updateParticles()
 {
@@ -1089,148 +915,88 @@ createParticle(x,y,z,vx,vy,vz,type)
          return;
       }
    }
-
 }
 
-lookAt(mtx[9], pos[3],eye[3])
+lookAt(vec eye, vec pos, vec worldup, mtx[9])
 {
-   static fwd[3];
-   static up[3];
-   static side[3];
+   vec fwd;
+   vec up;
+   vec side;
    
    // find forward dir
-   fwd[0] = pos[0]-eye[0];
-   fwd[1] = pos[1]-eye[1];
-   fwd[2] = pos[2]-eye[2];
+   vecsub( fwd, pos, eye );
    normalize(fwd);
    
-   // find up vector as close to world up as possible
-   
-   static worldup[3];
-   worldup[0] = 0;
-   worldup[1] = -1;
-   worldup[2] = 0;
-   
+   // find up vector as close to world up as possible   
    dotprod = vecDot(worldUp,fwd);
    static part2[3];
-   part2[0] = fwd[0]*dotprod;
-   part2[1] = fwd[1]*dotprod;
-   part2[2] = fwd[2]*dotprod;
+   vecscalar( part2, fwd, dotprod);
    
-   up[0] = worldUp[0] - part2[0];
-   up[1] = worldUp[1] - part2[1];
-   up[2] = worldUp[2] - part2[2];
+   vecsub(up, worldUp, part2);
    normalize(up);
 
    static side[3];
-   vecCross(fwd,up,side);
+   vecCross(side,fwd,up);
    normalize(side);
-   
-   mtx[0] = side[0]; mtx[1] = side[1]; mtx[2] = side[2];
-   mtx[3] = up[0];   mtx[4] = up[1]; mtx[5] = up[2];
-   mtx[6] = fwd[0]; mtx[7] = fwd[1]; mtx[8] = fwd[2];
+  
+   buildMatrix( mtx, side, up, fwd ); 
 }
 
-vecdot(v1[3],v2[3]){
-   return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
+// -------------------------------------- VECTOR MATH
+vecScalar( vec out, vec a, s )
+{
+   out.x = a.x * s;
+   out.y = a.y * s;
+   out.z = a.z * s;
 }
 
-normalize(v[3]){
-   l = sqrt(v[0]^2 + v[1]^2 + v[2]^2);
-   if(l){
-      v[0] /= l;
-      v[1] /= l;
-      v[2] /= l;
+vecAdd( vec out, vec a, vec b)
+{
+   out.x = a.x + b.x;
+   out.y = a.y + b.y;
+   out.z = a.z + b.z;   
+}
+vecSub( vec out, vec a, vec b)
+{
+   out.x = a.x - b.x;
+   out.y = a.y - b.y;
+   out.z = a.z - b.z;   
+}
+
+vecCross( vec out, vec a, vec b)
+{
+   out.x = a.y*b.z - a.z*b.y;
+   out.y = a.z*b.x - a.x*b.z;
+   out.z = a.x*b.y - a.y*b.x;
+}
+
+// all you need is = to copy a struct
+vecSet(vec a, x,y,z){
+   a.x = x; a.y = y; a.z = z;
+}
+
+vecDot( vec a, vec b)
+{
+   return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+
+length( vec v )
+{
+   return sqrt( vecdot(v,v) );
+}
+
+normalize( vec v )
+{
+   len = length(v);
+   if ( len )
+   {
+      v.x /= len; v.y /= len; v.z /= len;
    }
 }
 
-veccross(v1[3], v2[3], vout[3])
+buildMatrix( mtx[9], vec side, vec up, vec fwd )
 {
-   vout[0] = v1[1] * v2[2] - v1[2] * v2[1];
-   vout[1] = v1[2] * v2[0] - v1[0] * v2[2];
-   vout[2] = v1[0] * v2[1] - v1[1] * v2[0];
-}
-
-setVec(v[3],x,y,z)
-{
-   v[0] = x; v[1] = y; v[2] = z;
-}
-
-alignToVector( input[3], dir[3] )
-{
-   static rotAxis[3];
-   cross( input, dir, rotAxis );
-   angle = angleBetween( input, dir ) ;
-
-   static mtx[9];
-   InitRotationMatrix(mtx,angle,rotAxis);
-   
-   transformPoint(input,mtx);
-}
-
-InitRotationMatrix(Mtx[9],r,pAxis[3])
-{
-  // The axis vector must be of unit length
-  x=0, y=0, z=0, m=0;
-  m = sqrt(pAxis[0]*pAxis[0] + pAxis[1]*pAxis[1] + pAxis[2]*pAxis[2]);
-  x = pAxis[0]/m;
-  y = pAxis[1]/m;
-  z = pAxis[2]/m;
-
-  // Compute the rotation matrix  
-  c = cos(r);
-  s = sin(r);
-
-  Mtx[0] = (x * x) * (1.0 - c) + c;
-  Mtx[1] = (y * x) * (1.0 - c) + (z * s);
-  Mtx[2] = (z * x) * (1.0 - c) - (y * s);
-
-  Mtx[3] = (x * y) * (1.0 - c) - (z * s);
-  Mtx[4] = (y * y) * (1.0 - c) + c;
-  Mtx[5] = (z * y) * (1.0 - c) + (x * s);
-
-  Mtx[6] = (x * z) * (1.0 - c) + (y * s);
-  Mtx[7] = (y * z) * (1.0 - c) - (x * s);
-  Mtx[8] = (z * z) * (1.0 - c) + c;
-} 
-
-angleBetween(v1[3], v2[3])
-{
-   ftol = 1e-7;
-   if( fabs(v1[0]-v2[0]) < ftol || fabs(v1[1]-v2[1]) < ftol || fabs(v1[2]-v2[2]) < ftol) return 0;
-   
-   aLen = sqrt(v1[0]^2 + v1[1]^2 + v1[2]^2);
-   bLen = sqrt(v2[0]^2 + v2[1]^2 + v2[2]^2);
-   dotProd = dpr(v1,v2);
-   return acos( dotProd / (aLen*bLen) );
-}
-
-
-dpr(v1[3], v2[3])
-{
-   return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
-}
-
-
-cross(a[3],b[3],p[3])
-{
-   p[0] = a[1]*b[2] - b[1]*a[2]; // yz
-   p[1] = a[2]*b[0] - b[2]*a[0]; // zx
-   p[2] = a[0]*b[1] - b[0]*a[1]; // xy
-}
-
-transformPoint(v[3], thisRot[9])
-{
-   NewX = v[0] * thisRot[0] + v[1] * thisRot[1] + v[2] * thisRot[2];
-   NewY = v[0] * thisRot[3] + v[1] * thisRot[4] + v[2] * thisRot[5];
-   NewZ = v[0] * thisRot[6] + v[1] * thisRot[7] + v[2] * thisRot[8];
-   v[0]=newx; v[1]=newy; v[2]=newz;
-}
-
-transformPoint(&x,&y,&z, thisRot[9])
-{
-   NewX = X * thisRot[0] + Y * thisRot[1] + Z * thisRot[2];
-   NewY = X * thisRot[3] + Y * thisRot[4] + Z * thisRot[5];
-   NewZ = X * thisRot[6] + Y * thisRot[7] + Z * thisRot[8];
-   x=newx; y=newy; z=newz;
+   mtx[0] = side.x; mtx[1] = side.y; mtx[2] = side.z;
+   mtx[3] = up.x;   mtx[4] = up.y;   mtx[5] = up.z;
+   mtx[6] = fwd.x;  mtx[7] = fwd.y;  mtx[8] = fwd.z;
 }
