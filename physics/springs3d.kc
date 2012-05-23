@@ -48,6 +48,8 @@ static UPDATE_TIME = 50;
    cls(0); clz(1e32);
    setcol(255,255,255);
    //setcam(0,0,camz,0,0);
+   setview(0,0,xres,yres,xres/2,yres/2,xres/2);
+   
    for(i=0; i<max_mp; i++){
       drawsph(mp[i].x, mp[i].y, mp[i].z, .5);
    }

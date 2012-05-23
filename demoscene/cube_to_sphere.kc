@@ -69,7 +69,7 @@ static numPts=0;
    targJ = int((dim2-1) * mousy/yres);   
    
 
-genGeo(tExT); 
+genGeo(tExt); 
 
 
    pt extBL, extBR, extTR, extTL;
@@ -228,6 +228,8 @@ if(1){
    setfont(12,16);
    setcol(255,255,255);
    printf("move mouse left/right");
+   
+   printf("num pts %g", numPts);
 
    playercontrols();
 }
@@ -328,6 +330,8 @@ ang2mat(hang,vang,mat[9])
 
 genGeo(val)
 {   
+  numPts = 0;
+  
    x=0;
    y=0;
    z=0;

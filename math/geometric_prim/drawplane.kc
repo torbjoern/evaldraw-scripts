@@ -14,7 +14,7 @@ static mtx[9];
    ca = cos(a);
    sa = sin(a);
    setcam( sa*r, -0.25, ca*r, a, 0 );
-
+   setview(0,0,xres,yres,xres/2,yres/2,xres/2);
    
    glCullface(GL_NONE); // not actual gl
    glEnable(GL_ALPHA_TEST);
@@ -30,6 +30,7 @@ static mtx[9];
       
       random_unit( normal );
       
+      setcol(255,0,0);
       drawplane(pos, normal);
    }
    
@@ -41,14 +42,19 @@ static mtx[9];
 }
 
 
-drawplane(vec pos, vec normal)
+drawplane(vec pos, vec normal )
+{
+   drawplane(pos,normal,1,1);
+}
+
+drawplane(vec pos, vec normal, scale_x, scale_y )
 {   
    // Create two vectors a and c, perpendicular to normal
    vec not_normal;
-   vecset(not_normal, normal);
+   not_normal =  normal;
    
    vec perp;
-   vecset( perp, normal );
+   perp = normal;
    if (not_normal.x == 0 && not_normal.z == 0){
       not_normal.x += 1;
    }else{
@@ -63,8 +69,8 @@ drawplane(vec pos, vec normal)
    
    // scale a and b down to 1/2 as we will use
    // them in +- dir
-   vecscalar(a,a,0.5);
-   vecscalar(b,b,0.5);
+   vecscalar(a,a,0.5*scale_x);
+   vecscalar(b,b,0.5*scale_y);
    
    // Create plane vertices from perpendiculars
    vec neg_a, neg_b;
@@ -82,10 +88,10 @@ drawplane(vec pos, vec normal)
    vecadd( pa_mb, a, neg_b);
 
    vec u0, u1, u2, u3;
-   vecset(u0, ma_mb);
-   vecset(u1, ma_pb);
-   vecset(u2, pa_pb);
-   vecset(u3, pa_mb);
+   u0 = ma_mb;
+   u1 = ma_pb;
+   u2 = pa_pb;
+   u3 = pa_mb;
 
    // Translate to final position
    vecadd(u0,pos,u0);
@@ -96,10 +102,11 @@ drawplane(vec pos, vec normal)
    vec end;
    vecadd(end, pos, normal);
    
-   setcol(255,0,0);
-   drawArrow(pos, end, 0.03);
+   
 //#define SHOW_VECTORS
 #ifdef SHOW_VECTORS
+   setcol(255,0,0);
+   drawArrow(pos, end, 0.03);
    
    vecadd(end, pos, a);
    setcol(0,255,0);
@@ -109,8 +116,6 @@ drawplane(vec pos, vec normal)
    setcol(0,0,255);
    drawArrow( pos, end, 0.03);
 #endif
-   
-   setcol(255,255,255);
    
    glBegin(GL_QUADS);
       glTexcoord(0,1);
@@ -133,9 +138,8 @@ drawplane(vec pos, vec normal)
       glTexcoord(1,0);
       glVertex( u3 );
    glEnd();
-   
+} // end drawplane
 
-}
 
 random_unit( vec v )
 {

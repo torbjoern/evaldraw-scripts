@@ -84,6 +84,7 @@ buildMatrix( mtx[9], vec side, vec up, vec fwd )
    mtx[6] = fwd.x;  mtx[7] = fwd.y;  mtx[8] = fwd.z;
 }
 
+// b = a^T
 transpose(b[9],a[9])   
 {             
    b[0*3+0] = a[0*3+0];       
@@ -97,6 +98,24 @@ transpose(b[9],a[9])
    b[2*3+0] = a[0*3+2];       
    b[2*3+1] = a[1*3+2];       
    b[2*3+2] = a[2*3+2];             
+}
+
+// C = AB, multiplies A and B, puts result in C
+mult(c[9],a[9],b[9])
+{
+   // mult a row in A with a column in B,
+   // A's row 0 times B's column 0 becomes element [0][0] in C.
+   
+   for(i=0; i<3; i++)
+      for(j=0; j<3; j++)
+      {
+         sum = 0.0;
+         for(k=0; k<3; k++)
+         {
+            sum += A[k*3+i] * B[k*3+j];
+         }
+         C[i*3+j] = sum;
+      }
 }
 
 transformPoint(vec v, thisRot[9])

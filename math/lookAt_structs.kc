@@ -65,13 +65,13 @@ lookAt(vec eye, vec pos, vec worldup, mtx[9])
    
    // find up vector as close to world up as possible   
    dotprod = vecDot(worldUp,fwd);
-   static part2[3];
+   vec part2;
    vecscalar( part2, fwd, dotprod);
    
    vecsub(up, worldUp, part2);
    normalize(up);
 
-   static side[3];
+   vec side;
    vecCross(side,fwd,up);
    normalize(side);
   

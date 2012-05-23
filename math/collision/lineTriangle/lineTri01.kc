@@ -100,7 +100,7 @@ display(vec poly[3], vec polynormal)
 
 
 // TRI ISECT
-// returns 1 if collision, and changes t variabel, point on line for collision
+// returns 1 if collision, and changes t variable, point on line for collision
 // returns 0 if not collision
 IntersectedPolygon(vec poly[3], vec myline[2], vec polynormal, &t)
 {

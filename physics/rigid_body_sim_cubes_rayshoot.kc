@@ -34,7 +34,7 @@ enum{ cubeSize = 12,
 static pointSampling = 4;
 static double spring = 0.02;
 static double damping = 0.01;
-static double grav = 0.00; //0.02
+static double grav = 0.02; //0.02
 
 static vec zero_vec;
 

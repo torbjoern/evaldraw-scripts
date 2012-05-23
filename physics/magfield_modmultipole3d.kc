@@ -1,6 +1,6 @@
 
 
-enum{MAXPOLES = 15}
+enum{MAXPOLES = 4}
 
 static worldSiz = 20;
 static poleRadi = .5;
@@ -13,250 +13,128 @@ static positivePole[MAXPOLES];
 static positiveCount = 0;
 
 
-static posx = 0;
-static posy = 0;
-static posz = -50;
-static posh = 3.14; // left right
-static posv = -3.14;
-static mat[9]; 
+struct pole
+{
+   x,y,z;
+   polarity;
+   magnitude;
+   
+};
 
+
+enum {NUMP=1024*4} //8192 4096 2048 1024
+static px[NUMP], py[NUMP], pz[NUMP];
+
+static otim;
 ()
 {
-
-  //cls(0x503070);
-  clz(1e32);
+  cls(0x503070); clz(1e32);
   
-  static toggleCls = 0;
-  if( keystatus[2] && toggleCls == 0 )  // no cls-ing
-  {
-    keystatus[2] = 0;
-    toggleCls = 1;
-    cls(0x503070); // cls to get rid of floor
-  }
-  
-  if( keystatus[2] && toggleCls == 1 ) // turn cls back on
-  {
-    keystatus[2] = 0;
-    toggleCls = 0;
-  }
-  
-  if(toggleCls==0)
-  { 
-    cls(0x503070); 
-    // A floor of spheres so we can orient ourselves easier...
-    setcol(64,64,64);
-    for(i=-worldSiz; i<worldSiz; i++)
-      for(j=-worldSiz; j<worldSiz; j++)
-      drawsph(i,-worldSiz,j,poleRadi);
-  }
-  
-  playercontrols();
-
   if(numframes==0)
   {
-    
-    // place poles randomly in space
-     for(i=0; i<MAXPOLES; i++){
-        poleX[i] = nrnd*(worldSiz/2);
-        poleY[i] = nrnd*(worldSiz/2);
-        poleZ[i] = nrnd*(worldSiz/2);
-        polarity[i] = sgn(nrnd);
+     for(i=0;i<NUMP;i++) { // position particles   
+        px[i] = nrnd * worldSiz;
+        py[i] = nrnd * worldSiz;
+        pz[i] = nrnd * worldSiz;
+        
      }
-     for(i=0; i<MAXPOLES; i++)
-     {
-        if(polarity[i] == 1)
-        {
-           positivePole[positiveCount] = i;
-           positiveCount++;
-        }
+     for(i=0; i<MAXPOLES; i++){ // position poles
+        poleX[i] = random(-worldSiz,worldSiz);
+        poleY[i] = random(-worldSiz,worldSiz);
+        poleZ[i] = random(-worldSiz,worldSiz);
+        polarity[i] = nrnd;
+     }
+     for(i=0; i<MAXPOLES; i++) { // save poles with +charge
+       if(polarity[i] > 0)
+       {
+         positivePole[positiveCount] = i;
+         positiveCount++;
+       }
      }
      // If no poles are postive, set pole zero to +... or else all particles eventually get sucked up.
-     if( positiveCount == 0 ){ polarity[0]=1; positivePole[positiveCount]=0; positiveCount=1; }
-     
+     if( positiveCount == 0 ){ 
+        polarity[0]=1; positivePole[positiveCount]=0; positiveCount=1;
+     }
   }
-  /*
-  if (bstatus%2)
+  
+  // Main loop:
+  tim = klock(0); dt = tim-otim; otim = tim;
+  setcol(0xffffff);
+
+  for(i=0;i<NUMP;i++)
   {
-     minDist = 1e32;
-     closest = -1;
+     x = px[i]; 
+     y = py[i];
+     z = pz[i];
      
-     for(i = 0; i<MAXPOLES; i++){
-        dist = ((mousx-polex[i])^2 + (mousy-poley[i])^2 ); // < 16^2;
-        if( dist < minDist ){
-           minDist = dist;
-           closest = i;  
-        }
-     }
-     if(closest != -1){
-        polex[closest] = mousx;
-        poley[closest] = mousy;
-     }
-  }
-  */
-  {   
-     enum {NUMP=4096}//8192 4096 2048 1024
-     static px[NUMP], py[NUMP], pz[NUMP], otim;
+     dead = 0;
+     if( x < -worldSiz || x > worldSiz ) dead = 1;
+     if( y < -worldSiz || y > worldSiz ) dead = 1;
+     if( z < -worldSiz || z > worldSiz ) dead = 1;
      
-     if (numframes==0 || keystatus[57])
+     vx=0; vy=0; vz=0;
+     
+     if(dead==0)
      {
-        j=0;
-        for(i=0;i<NUMP;i++)
+        for(j=0; j<MAXPOLES; j++)
         {
-           p = positivePole[j];
-           px[i] = nrnd * worldSiz;
-           py[i] = nrnd * worldSiz;
-           pz[i] = nrnd * worldSiz;
-           j++;//evaldraw handles out of bounds.
-        }
-        otim = klock(0);
-     }
-     
-     tim = klock(0); dt = tim-otim; otim = tim;
-     setcol(0xffffff);
-     
-
-  if (0)
-  {
-     static z=0;
-     if(keystatus[3]){ z+=10*dt; if(z>worldSiz) z=worldSiz; }
-     if(keystatus[4]){ z-=10*dt; if(z<-worldSiz) z=-worldSiz; }
-     
-     //for(z=-worldSiz; z<worldSiz; z+=5)
-     for(y=-worldSiz;y<worldSiz;y+=1)
-        for(x=-worldSiz;x<worldSiz;x+=1)
-        {
-           vx=0;
-           vy=0;
-           vz=0;
-           // Sum velocity at point, using contribs from all poles.
-           for(p1=0; p1<MAXPOLES; p1++)
-           {
-              x1 = poleX[p1]; y1 = poleY[p1]; z1 = poleZ[p1];
-              dist1 = (x-x1)*(x-x1) + (y-y1)*(y-y1) + (z-z1)*(z-z1);
-              nd = 1.0/dist1;
-              vx += (x-x1)*nd*polarity[p1];
-              vy += (y-y1)*nd*polarity[p1];
-              vz += (z-z1)*nd*polarity[p1];
-           }    
-           vx /= MAXPOLES;
-           vy /= MAXPOLES;
-           vz /= MAXPOLES;
-           f = 2.0/sqrt(vx*vx + vy*vy + vz*vz);
-           vx *= f; vy *= f; vz *= f;   
-           // Draw velocity vector from point in space.
-           //setcol(0x804040);
-           //setcol(0xff7f7f); 
-           setcol(.3*f, 128+.1*f, .7*f);
-           drawcone(x,y,z,.05,x+vx,y+vy,z+vz,0.01);
-           //moveto(x,y,z);
-           //lineto(x+vx,y+vy,z+vz);
-        }
-  }
-  else
-  {
-
-     for(i=0;i<NUMP;i++)
-     {
-        x = px[i]; 
-        y = py[i];
-        z = pz[i];
-        dead = 0;
-
-        particleKillDist = worldSiz*4;
-        if( x < -particleKillDist || x > particleKillDist ) dead = 1;
-        if( y < -particleKillDist || y > particleKillDist ) dead = 1;
-        if( z < -particleKillDist || z > particleKillDist ) dead = 1;
-        
-        
-        /*if ((abs(x-hx) >= hx) || (abs(y-hy) >= hy))
-        {
-           //Select random point on border
-           j = (xres+yres)*2*rnd;
-                if (j < xres) { x = j; y = 0; }
-           else if (j < xres*2)
-              { x = j-xres; y = yres; }
-           else if (j < xres*2+yres)
-              { x = 0; y = j-xres*2; }
-           else { x = xres; y = j-xres*2-yres; }
-        }*/
-          
-
-        dist = 1e6;
-        vx=0;
-        vy=0;
-        vz=0;
-        if(dead==0)
-        for(p1=0; p1<MAXPOLES; p1++)
-        {
-           if(dead)break;
-           x1 = poleX[p1]; y1 = poleY[p1]; z1 = poleZ[p1];
-
-           //dx = x1-x2; dy = y1-y2;
-           //cx = (x1+x2)/2; cy = (y1+y2)/2;
-
-           dist1 = (x-x1)^2 + (y-y1)^2 + (z-z1)^2;
-
+           x1 = poleX[j]; y1 = poleY[j]; z1 = poleZ[j];
+           // Vector from pole to Particle
+           dx = (x-x1); dy = (y-y1); dz = (z-z1);
+           distSq = dx^2 + dy^2 + dz^2;
            
-           if( polarity[p1] == -1 && dist1 < 2*poleRadi){dead=1; break;}
+           // kill when hit sink...
+           if( polarity[j] < 0 && distSq < 2*poleRadi){
+              dead = 1;
+              break;
+           } 
        
-           nd = 1.0/dist1;
-           vx += (x-x1)*nd*polarity[p1];
-           vy += (y-y1)*nd*polarity[p1];
-           vz += (z-z1)*nd*polarity[p1];
+           nd = 1.0/distSq;
+           vx += dx*nd*polarity[j];
+           vy += dy*nd*polarity[j];
+           vz += dz*nd*polarity[j];
         }      
-
         vx /= MAXPOLES;
         vy /= MAXPOLES;
         vz /= MAXPOLES;
-
-        if(dead)
-        {
-           randPole = positivePole[int(rnd*positiveCount)]; // Choose a positive pole to spawn on.
-           rx=0; ry=0; rz=0;
-           randPointOnSphere(poleRadi,rx,ry,rz);
-           px[i] = polex[randPole] + rx;
-           py[i] = poley[randPole] + ry;
-           pz[i] = polez[randPole] + rz;
-        }
-        else
-        {
-           d = sqrt(vx*vx+vy*vy+vz*vz);
-           //if(d > 0.0) f = 5.0/d; else f = 1e-7;
-           // Line length
-           f = 2/d; 
-           //setcol(64+rnd*128, 64+rnd*128, 128+rnd*128);
-           //setcol(511-f*5,511,511-f*10);
-           //setcol(2*f,1*f,0);
-           setcol((i%72)*64+64,(i%80)+128,64);
-           //drawsph(x,y,z,f*1e-2);
-           moveto( x-vx*f, y-vy*f, z-vz*f); lineto( x+vx*f, y+vy*f, z+vz*f);
-           //drawcone(x-vx*f, y-vy*f, z-vz*f, .08, x+vx*f, y+vy*f, z+vz*f,.08);
-           
-           f = 96*dt/d; // Speed 4,8,16
-           x += vx*f;
-           y += vy*f;
-           z += vz*f;
-           
-           px[i] = x;
-           py[i] = y;
-           pz[i] = z;
-        }
      }
-  }
+
+     if ( dead ) {
+        randPole = positivePole[int(rnd*positiveCount)]; // Choose a positive pole to spawn on.
+        rx=0; ry=0; rz=0;
+        randPointOnSphere(poleRadi,rx,ry,rz);
+        px[i] = polex[randPole] + rx;
+        py[i] = poley[randPole] + ry;
+        pz[i] = polez[randPole] + rz;
+     }        
+
+     mag = sqrt(vx^2 + vy^2 + vz^2);
+     len = .125 / mag;
+     setcol((i%72)*64+64,(i%80)+128,64);
+     //drawsph(x,y,z,len*1e-2);
+     moveto( x-vx*len, y-vy*len, z-vz*len); lineto( x+vx*len, y+vy*len, z+vz*len);
+     
+     // Move
+     f = 1000*dt;
+     px[i] += vx*f;
+     py[i] += vy*f;
+     pz[i] += vz*f;
   }
   
-  // Draw poles and their polarity.
-  setcol(0xc0c0ff);
-  setfont(12,16);
-  
+  // Draw poles
   for(i=0; i<MAXPOLES; i++)
   {
-    if( polarity[i] == 1 ) setcol(255,0,0); else setcol(0,0,255);
+    if( polarity[i] > 0 ) setcol(255,0,0); else setcol(0,0,255);
     drawsph(poleX[i], poleY[i], poleZ[i], poleRadi);
-  //  moveto( xres/2+xres*mat[0]*poleX[i]/worldSiz / -poleZ[i] , yres/2+yres*mat[1]*poleY[i]/worldSiz / -poleZ[i]); 
-  //  if( polarity[i] == 1 ) printchar('+'); else printchar('-');
   }
   
+  // A floor of spheres so we can orient ourselves easier...
+  setcol(64,64,64);
+  for(i=-worldSiz; i<worldSiz; i++)
+    for(j=-worldSiz; j<worldSiz; j++)
+      drawsph(i,-worldSiz,j,poleRadi);
+      
+  playercontrols();
 }
 
 random(lo,hi)
@@ -274,13 +152,18 @@ randPointOnSphere(radius,&x,&y,&z) {
   y = sqrt(radius_sq - zsq) * sin(theta);
 }
 
-
-
 /////////// CAM
 // Camera and movement code taken from /games/
 //Handle input and player movement
 playercontrols()
 {
+   static posx = 0;
+   static posy = 0;
+   static posz = -50;
+   static posh = 3.14; // left right
+   static posv = -3.14;
+   static mat[9]; 
+
    static oldMouseX;
    static oldMouseY;
    static mouseSpeedX;
@@ -325,3 +208,5 @@ ang2mat(hang,vang,mat[9])
    mat[4] = mat[8]*mat[0] - mat[6]*mat[2];
    mat[5] = mat[6]*mat[1] - mat[7]*mat[0];
 }
+
+lerp(a,b,t){ return a*(1-t)+b*t; }

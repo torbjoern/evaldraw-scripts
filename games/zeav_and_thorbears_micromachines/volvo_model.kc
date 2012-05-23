@@ -27,14 +27,11 @@ struct Rigid_t
    torque;
    inertia;
    
-   // Graphical
+   // Dimensions
    vec half_size;
    
    wheel_t wheels[4];
 }
-
-static screenScale = 1.0;
-
 
 static rigid_t mycar;
 static time;
@@ -60,8 +57,6 @@ static time;
    draw( mycar );
    
    
-   //setcam(0,-50,350,0,PI/4);
-   
    static mtx[9];
    vec worldup;
    vecset( worldup, 0, 1, 0 );
@@ -71,16 +66,10 @@ static time;
    vecset( eyeCenter, 250,-50,250 );
      
    vecset( target,mycar.pos.x, 0, yres-mycar.pos.y );
-   
    lookAt( eyeCenter, target, worldUp, mtx );
-   
    setcam2( eyeCenter, mtx );
-   
 
    doFrame(mycar, delta);
-   
-   
-   
 }
 
 draw( rigid_t r )
@@ -163,24 +152,12 @@ draw( rigid_t r )
       }else{
          setcol(255,0,0);
       }
-   /*
-      moveto( worldWheelOffset.x, worldWheelOffset.y );
-      lineto( worldWheelOffset.x +worldWheelSideVec.x, worldWheelOffset.y + worldWheelSideVec.y );
-      moveto( worldWheelOffset.x, worldWheelOffset.y );
-      lineto( worldWheelOffset.x -worldWheelSideVec.x, worldWheelOffset.y -worldWheelSideVec.y );    
-  */
       setcol(255,255,255);
       wheelAng = atan2(  r.wheels[i].forwardAxis.y -r.wheels[i].sideAxis.y,  r.wheels[i].forwardAxis.x - r.wheels[i].sideAxis.x );
-      
       drawspr("kmine.kv6", worldWheelOffset.x,-10, yres-worldWheelOffset.y, 9 , -pi/4 + r.angle + wheelAng , r.wheels[i].wheelAngle/(2*PI) ,-pi/2);
-
-      
    }
 
-   setcol(255,255,255);
-   glenable(GL_ALPHA_TEST);
-   //drawspr(r.pos.x, r.pos.y, 25,60, -PI+r.angle );
-   //drawspr("cow.kv6", mycar.pos.x, -30, yres-mycar.pos.y, 55 , mycar.angle, 0, 0 );
+   setcol(255,255,255);   
    drawspr("volvo.kv6", mycar.pos.x, 0, yres-mycar.pos.y, 55 , -pi/2+mycar.angle, 0, 0 );
    
    for(i=0; i<4; i++)
@@ -194,23 +171,6 @@ draw( rigid_t r )
       rotate2d( r.angle, wheel_sidevecs[i]  ); // Apply rotation
       vecadd( edges[i], edges[i], pos ); // Translate
    }
-   /*
-   for(i=0; i<4; i++)
-   {
-      //drawsph( edges[i].x, edges[i].y, -r.wheels[i].wheelRadius );
-      moveto( edges[i].x, edges[i].y );
-      lineto( edges[(i+1)%4].x, edges[(i+1)%4].y );
-      
-      
-      vec wheeloffset;
-      vecadd( wheeloffset, edges[i], wheel_sidevecs[i] );
-      moveto(wheeloffset.x, wheeloffset.y);
-      lineto(wheeloffset.x + wheel_vecs[i].x * 15, wheeloffset.y + wheel_vecs[i].y * 15);
-   }
-   */
-   
-   //moveto( r.pos.x, r.pos.y );
-   //lineto( r.pos.x + r.vel.x, r.pos.y + r.vel.y );
 }
 
 setcam2( vec p, m[9] )
@@ -336,46 +296,13 @@ doFrame(rigid_t r, time_step)
    setThrottle(r, throttle );
    setBrakes(r, brakes );
    vechicleUpdate( r, time_step * 10.0);
-   
-   skid = 0;
-   
-   vec car_axis;
-   vecset( car_axis, 0, 1, 0);
-   relativeToWorld( r, car_axis, car_axis );
-   
-   //setcol(255,0,0);
-   //moveto( r.pos.x, r.pos.y );
-   //lineto( r.pos.x + car_axis.x * 15, r.pos.y + car_axis.y * 15 );
 
-
-      vec vel_dir;
-      vecset(vel_dir, r.vel );
-      normalize( vel_dir );
-   
-   angle_offset = 0;
-
-   absVel = length(r.vel);
-   if ( absVel > 0 )
-   {
-      vel_dot_forward = vecdot( vel_dir, car_axis );
-      angle_offset = (1-vel_dot_forward)/3.14*180;
-      
-      if ( angle_offset > 5 && absVel > 20 ) skid = 1;
-      
-      if (skid > 0)
-      {
-         skid--;
-         if ((numframes%8) == 0)
-            skhand = playsound("fminst.flac", 50 ,abs(nrnd)*.005+1.8);
-      }
-
-   }
-
+   absvel = length(r.vel);
    draw_tach_meter( xres-60, yres-60, 50, absvel/100 );
    
    moveto(0,0);
    printf("%g\n", absvel);
-   printf("%g\n", angle_offset );
+   //printf("%g\n", angle_offset );
 }
 
 

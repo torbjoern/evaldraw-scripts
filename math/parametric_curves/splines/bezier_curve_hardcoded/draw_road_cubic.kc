@@ -21,13 +21,15 @@ struct BezPoint
 static BezPoint pts[MAXPTS];
 static numpts = 0;
 
+static road_tex = 0;
 ()
 {   
    if(numframes==0)
    {
-      glsettex("asfalt.png");
+      road_tex = glsettex("asfalt.png");
    }
    cls(0x1d8725); clz(1e32);
+   glDisable(GL_DEPTH_TEST);
      
    if(keystatus[57] && numpts < MAXPTS)
    {
@@ -37,21 +39,40 @@ static numpts = 0;
    
    move_points();
    
- 
 
+ 
+   //if ( keystatus[1] ) 
+   {
+      cls(0); clz(1e32);
+      
+      static hand = 0;
+      if ( numframes == 0 ) {
+         hand = glsettex("F:/repos/github/ProtoWizard/bin/assets/textures/lyngaas_overview.png");
+      }
+      setcol(255,255,255);
+      glsettex(hand);
+      glbegin(GL_QUADS);
+         gltexcoord(0,0); glvertex(0,0);
+         gltexcoord(1,0); glvertex(xres,0);
+         gltexcoord(1,1); glvertex(xres,yres);
+         gltexcoord(0,1);  glvertex(0,yres);
+      glend();
+   
+   }
    
    
    
    
-   glEnable(GL_DEPTH_TEST);
-   scale = 25;
+   
+   width = 10;
    rez = 20;
-   draw_road(scale,rez);
+   glsettex(road_tex);
+   draw_road(width,rez);
    
    static debug_draw = 1;
    if (debug_draw)
    {
-      draw_curve(scale,rez);
+      draw_curve(width,rez);
       draw_points();
    }
       
@@ -61,6 +82,8 @@ static numpts = 0;
       if (debug_draw==1 ) debug_draw = 0; else debug_draw = 1;
    }
    
+
+
    setfont(6,8);
    xp = xres - 192;
    yp = 32;
@@ -282,7 +305,7 @@ create_point()
       numpts++;
 }
 
-draw_road(scale, rez){
+draw_road(width, rez){
 
    Point curvePt, normal;
    
@@ -318,15 +341,15 @@ draw_road(scale, rez){
          }
        
          
-         scale_factor = distance2d( oldPt, curvePt ) / scale;
+         scale_factor = distance2d( oldPt, curvePt ) / width;
          
          glbegin(GL_COMPLEX);
-         gltexcoord(0,0); glvertex( oldPt.x - oldNormal.y * scale,oldPt.y + oldNormal.x * scale);
-         gltexcoord(1,0); glvertex( oldPt.x + oldNormal.y * scale,oldPt.y - oldNormal.x * scale);
+         gltexcoord(0,0); glvertex( oldPt.x - oldNormal.y * width,oldPt.y + oldNormal.x * width);
+         gltexcoord(1,0); glvertex( oldPt.x + oldNormal.y * width,oldPt.y - oldNormal.x * width);
          
     
-         gltexcoord(1,scale_factor);  glvertex( curvePt.x + normal.y * scale,curvePt.y - normal.x * scale);
-         gltexcoord(0,scale_factor);  glvertex( curvePt.x - normal.y * scale,curvePt.y + normal.x * scale);
+         gltexcoord(1,scale_factor);  glvertex( curvePt.x + normal.y * width,curvePt.y - normal.x * width);
+         gltexcoord(0,scale_factor);  glvertex( curvePt.x - normal.y * width,curvePt.y + normal.x * width);
          
          glEnd();
 
