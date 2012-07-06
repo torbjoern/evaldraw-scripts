@@ -36,7 +36,7 @@ struct vec{x,y,z;}
    double aspect = width / height;
 
    // compute distance to the camera plane from the field of view, and aspect ratio
-   double fov = 75;
+   double fov = 45;
    double cameraPlaneDistance = 1.0 / (2.0 * tan(fov*PI/180*0.5));
 
    // Compute the step size for the ray marching.

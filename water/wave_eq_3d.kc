@@ -7,7 +7,7 @@
 // finding wave dir at point
 // draw line with mouse
 //
-enum{len=200}
+enum{len=128}
 static val[len*len];
 static deriv[len*len];
 static oldx,oldy;

@@ -39,7 +39,7 @@ struct plane_t
    
    x=0;
    y=0;
-   num = 24;
+   num = 25;
    inc = 1 / sqrt(num);
    for(i = 0; i < num; i++ )
    {

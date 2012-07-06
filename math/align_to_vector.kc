@@ -167,7 +167,7 @@ InitRotationMatrix(Mtx[9],r,pAxis[3])
 angleBetween(v1[3], v2[3])
 {
    ftol = 1e-7;
-   if( fabs(v1[0]-v2[0]) < ftol || fabs(v1[1]-v2[1]) < ftol || fabs(v1[2]-v2[2]) < ftol) return 0;
+   if( fabs(v1[0]-v2[0]) < ftol && fabs(v1[1]-v2[1]) < ftol && fabs(v1[2]-v2[2]) < ftol) return 0;
    
    aLen = sqrt(v1[0]^2 + v1[1]^2 + v1[2]^2);
    bLen = sqrt(v2[0]^2 + v2[1]^2 + v2[2]^2);

@@ -82,8 +82,11 @@ static camera_t2 cam2;
     height = 160;
  
     // Vertical and horizontal field of view
-    hfov = PI/3.5;
+    hfov = PI/3.5; // pi/3.5 = 51,428
     vfov = hfov * height/width;
+		
+ 		//vfov = pi/3.5; //51.428 / 180. * PI;
+		//hfov = vfov * width/height;
  
     // Pixel width and height
     pw = 2.0 * tan( hfov/2.0 ) / width;

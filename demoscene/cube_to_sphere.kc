@@ -1,3 +1,12 @@
+/*
+idea was to have something that morphs between cube/sphere  and has
+faces that extrude in time to music. 
+
+Extrusion length <-> amplitude
+what cube on face <-> frequency
+
+*/
+
 // begin camera
 static posx = 0;
 static posy = 0;
@@ -9,12 +18,9 @@ static mat[9];
 
 static time, dt, oldtime;
 
-
-
-struct pt
-{
-   double x,y,z;
-}
+struct vec{ 
+  x,y,z;
+};
 
 
 enum{dim1=11*1, dim2=11*1}
@@ -30,8 +36,8 @@ static color[6][dim1][dim2];
 
 enum{SIZECOUNT = 10}
 enum{MAXPTS = dim1*dim2*6 }
-static pt cubePts[MAXPTS];
-static pt spherePts[MAXPTS];
+static vec cubePts[MAXPTS];
+static vec spherePts[MAXPTS];
 static numPts=0;
 
 // TODO: vertex normals, phong shading
@@ -61,18 +67,22 @@ static numPts=0;
    glCullface(GL_NONE);
 
    
-   t = 0;
+   
    tExt = mousx/xres;
 
    targS = 0;
    targI = int((dim1-1) * mousx/xres);  
    targJ = int((dim2-1) * mousy/yres);   
    
+   t = time;
+   targI = int( (0.5+0.5*cos(2*t))*(dim1-1) );
+   targJ = int( (0.5+0.5*sin(t))*(dim2-1) );
+   
 
 genGeo(tExt); 
 
 
-   pt extBL, extBR, extTR, extTL;
+   vec extBL, extBR, extTR, extTL;
    for(s=0; s<6; s++)
    {
    for(i=0; i<dim1-1; i++)
@@ -91,7 +101,7 @@ genGeo(tExt);
             t=0;
          }
 
-         if(1)
+         if(0)
          {
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
@@ -117,33 +127,29 @@ genGeo(tExt);
          nx *= t;
          ny *= t;
          nz *= t;  
-#define EXTRUSIONS         
-#ifdef EXTRUSIONS         
-    
 /// Head
 
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
-         setPt( extBL, px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
+         vec extBL = {px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz};
          
          u=i+1; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
-         setPt( extBR, px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
+         vec extBR = {px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz};
          
          u=i+1; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
-         setPt( extTR, px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
+         vec extTR = {px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz};
          
          u=i+0; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
-         setPt( extTL, px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz );
+         vec extTL = {px[s][u][v]+nx, py[s][u][v]+ny, pz[s][u][v]+nz};
 
-/////1
-if(1){
+////// 1
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( extTL.x, extTL.y, extTL.z );
@@ -159,10 +165,7 @@ if(1){
          u=i+0; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v], py[s][u][v], pz[s][u][v] );
-}
-
 //////2
-if(1){
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v], py[s][u][v], pz[s][u][v] );
@@ -178,9 +181,7 @@ if(1){
          u=i+0; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( extBL.x, extBL.y, extBL.z );
-}
 //////3
-if(1){
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( extBR.x, extBR.y, extBR.z );
@@ -196,9 +197,7 @@ if(1){
          u=i+0; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( extTR.x, extTR.y, extTR.z );
-}  
 //////4
-if(1){
          u=i+0; v=j+0;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v], py[s][u][v], pz[s][u][v] );
@@ -214,13 +213,9 @@ if(1){
          u=i+0; v=j+1;
          setcol( color[s][u][v]  );
          glVertex( px[s][u][v], py[s][u][v], pz[s][u][v] );          
-}
-#endif
-
          }
       } 
       glEnd();
-      
    }
    }
    
@@ -232,11 +227,6 @@ if(1){
    printf("num pts %g", numPts);
 
    playercontrols();
-}
-
-setPt(Pt p, x,y,z)
-{
-   p.x = x; p.y = y; p.z = z;
 }
 
 drawNum(num, px,py,pz)

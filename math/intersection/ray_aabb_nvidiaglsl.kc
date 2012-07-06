@@ -1,8 +1,6 @@
 /*
-taken from the very good book
-Mathematics for 3D game Programming & Computer Graphics by Eric Lengyel
 
-evaldraw code written by Torbjoern 23. august 2011
+evaldraw code written by Torbjoern 2. july 2012
 
 */
 
@@ -24,10 +22,11 @@ struct ray_t
    vec dir;
 }
 
+// daft representation!
 struct box_t
 {
-   vec pos;
-   vec dim;
+   vec pos; // aka boxmin!
+   vec dim; // boxmax = min + dim
 }
 
 static camera_t camera;
@@ -52,22 +51,25 @@ static camera_t camera;
    ray_t ray;
    set( ray.origin, -2.0,0,0 );
    set( ray.dir, cos(a)*r, sin(a)*r, 0 );
- 
-
-   tx = -5 + 10 * mousy/yres;
+	 
+   static tx = 1.0;
+	 if ( keystatus[57] ) tx = -5 + 10 * mousy/yres;
 
    box_t box;
    set( box.pos, -1.5 ,-1.5,-1.5+tx );
-   set( box.dim, 3 ,3,3);
-   drawsph( box.pos, .2 );
+   vec dimz = {1,1,1};
+	 box.dim = dimz;
+	 //set( box.dim, 3,3,3);
+   drawsph( box.pos, .08 );
    vec pos_plus_dim;
    vecadd( pos_plus_dim, box.pos, box.dim );
-   drawsph( pos_plus_dim, .2 );
-   
+   drawsph( pos_plus_dim, .08 );
+   /*
    vec box_cent;
    vec halfdim; vecscalar( halfdim, box.dim, 0.5 );
    vecadd( box_cent, box.pos, halfdim );
    drawsph( box_cent, .1);
+	 */
 
    setcol( 255, 255, 255 );
    drawRay( ray );
@@ -75,21 +77,22 @@ static camera_t camera;
    num_hits = 0;
   
 
-   t = 0;
-   success = isect_ray_box( ray, box, t );
-   
-   if ( success == 1 )
-   //if (1)
+   tnear = 0;
+	 tfar = 0;
+   if (isect_ray_box( ray, box, tnear, tfar ) )
    {
-      if ( t>=0 && t<=1 )
-      {
-         num_hits++;
-         setcol(255,0,0); 
-         vec hit;
-         raypoint( hit, ray, t );
-         drawsph( hit.x, hit.y, hit.z, .1 );
+	    if ( tnear > 0 ) {
+				num_hits++;
+				//vec hit_near = {ray.origin.x + ray.dir.x*tnear, ray.origin.y + ray.dir.y*tnear, ray.origin.z + ray.dir.y*tnear};
+				vec hit;
+				raypoint( hit, ray, tnear );
+				setcol(0,255,0); drawsph( hit.x, hit.y, hit.z, .1 );
+
+				
+				raypoint( hit, ray, tfar );
+				setcol(255,0,0); drawsph( hit.x, hit.y, hit.z, .1 );
+				// drawText(hit, "tfar");
       }
-      
    }else
    {
       setcol(0,255,0); 
@@ -101,7 +104,8 @@ static camera_t camera;
    setcol( 0xf7ab0d );
    moveto(0,0);
    printf("hits = %g\n", num_hits);
-   printf("t = %g\n", t);
+   printf("tnear = %g\n", tnear);
+   printf("tfar = %g\n", tfar);
 }
 
 drawsph( vec a, r )
@@ -114,77 +118,46 @@ vecToArray( vec v, a[3] )
    a[0] = v.x; a[1] = v.y; a[2] = v.z;
 }
 
-isect_ray_box( ray_t ray, box_t box, &t )
+isect_ray_box( ray_t ray, box_t box, &tnear, &tfar )
 {
-   #define EPSILON 0.0
-   
-   static gotplane_origin[3];
-   static gotplane_dim[3];
-   
-   for(i=0; i<3; i++)
-   {
-      gotplane_origin[i] = 1;
-      gotplane_dim[i] = 1;
-   }
-   
-   static box_pos[3];
-   vecToArray( box.pos, box_pos );
-   
-   static box_dim[3];
-   vecToArray( box.dim, box_dim );
-   
-   static dir[3];
-   vecToArray( ray.dir, dir );
-  
-   static ray_origin[3];
-   vecToArray( ray.origin, ray_origin );
-   
-   static pt[3];
-   
-   for(i=0; i<3; i++)
-   {
-      if ( fabs(dir[i]) <= EPSILON )
-      {
-         gotplane_origin[i] = 0;
-         gotplane_dim[i] = 0;
-      }else{
-      
-         if( dir[i] > 0 ) 
-         {
-            gotplane_dim[i] = 0;
-         }
-      
-         if ( dir[i] < 0 ) 
-         {
-            gotplane_origin[i] = 0;
-         }
-      }
-      
-      if ( gotplane_dim[i]  )
-      {   
-         t = ( (box_pos[i]+box_dim[i]) - ray_origin[i]) / dir[i];
-         raypointArray( pt, ray, t );
-         got1 = pt[ (i+1)%3 ] >= box_pos[ (i+1)%3 ] && pt[ (i+1)%3 ] <= (box_pos[ (i+1)%3 ]+box_dim[ (i+1)%3]) ;
-         got2 = pt[ (i+2)%3 ] >= box_pos[ (i+2)%3 ] && pt[ (i+2)%3 ] <= (box_pos[ (i+2)%3 ]+box_dim[ (i+2)%3]) ;
-         if ( got1 && got2 )
-         {
-            return 1;
-         }
-      }
-      if ( gotplane_origin[i] )
-      {
-         t = (box_pos[i] - ray_origin[i]) / dir[i];
-         raypointArray( pt, ray, t );
-         got1 = pt[ (i+1)%3 ] >= box_pos[ (i+1)%3 ] && pt[ (i+1)%3 ] <= (box_pos[ (i+1)%3 ]+box_dim[ (i+1)%3]) ;
-         got2 = pt[ (i+2)%3 ] >= box_pos[ (i+2)%3 ] && pt[ (i+2)%3 ] <= (box_pos[ (i+2)%3 ]+box_dim[ (i+2)%3]) ;
-         if ( got1 && got2 )
-         {
-            return 1;
-         }
-      }        
+// original src:
+// http://http.download.nvidia.com/developer/presentations/2005/GDC/Sponsored_Day/GDC_2005_VolumeRenderingForGames.pdf
+  //(vec3 boxmin, vec3 boxmax, out float tnear, out float tfar)
+	//vec boxmin = {box.pos.x - .5*box.dim.x, box.pos.y - .5*box.dim.y, box.pos.z - .5*box.dim.z};
+	//vec boxmax = {box.pos.x + .5*box.dim.x, box.pos.y + .5*box.dim.y, box.pos.z + .5*box.dim.z};
+	
+	vec boxmin = {box.pos.x , box.pos.y , box.pos.z };
+	vec boxmax = {box.pos.x + box.dim.x, box.pos.y + box.dim.y, box.pos.z + box.dim.z};
+	
+	vec invR = {1.0 / ray.dir.x, 1.0 / ray.dir.y, 1.0 / ray.dir.z) };
+	vec tbot; vec rayToMin; vecsub(rayToMin, boxMin, ray.origin); vecMult(tbot, invR,rayToMin); //=invR * (boxmin - ray.origin);
+	vec ttop; vec rayToMax; vecsub(rayToMax, boxMax, ray.origin); vecMult(ttop, invR,rayToMax); //= invR * (boxmax - ray.origin);
 
-   } // end for 3
-   return 0; 
+	//re-order intersections to find smallest and largest on each axis
+	vec tmin = { min(ttop.x, tbot.x), min(ttop.y, tbot.y), min(ttop.z, tbot.z) };
+	vec tmax = { max(ttop.x, tbot.x), max(ttop.y, tbot.y), max(ttop.z, tbot.z) };
+
+	//find the largest tmin and the smallest tmax
+	t0x = max(tmin.x, tmin.y);
+	t0y = max(tmin.x, tmin.z);
+	double largest_tmin = max(t0x, t0y);
+	t0x = min(tmax.x, tmax.y);
+	t0y = min(tmax.x, tmax.z);
+	double smallest_tmax = min(t0x, t0y);
+
+	//check for a hit
+	hit = 0;
+	if((largest_tmin > smallest_tmax)) {
+					hit = 0;
+	} 
+	else {
+					hit = 1;
+	}
+
+	tnear = largest_tmin;
+	tfar = smallest_tmax;
+
+	return hit;
 }
 
 raypointArray( out[3], ray_t r, t )
@@ -222,7 +195,7 @@ drawBox( box_t b )
    vec upper;
    vecadd( upper, b.pos, b.dim );
    
-   r = 0.1;
+   r = 0.07;
    drawsph( b.pos.x, b.pos.y, b.pos.z, r );
    drawsph( b.pos.x, b.pos.y, upper.z, r );
    drawsph( b.pos.x, upper.y, b.pos.z, r );
@@ -254,6 +227,14 @@ drawBox( box_t b )
  
 }
 
+
+
+vecMult( vec out, vec a, vec b)
+{
+   out.x = a.x * b.x;
+   out.y = a.y * b.y;
+   out.z = a.z * b.z;
+}
 
 vecscalar( vec out, vec a, s)
 {
@@ -294,6 +275,12 @@ length( vec v )
    return sqrt( dot(v,v) );
 }
 
+normalize(vec v) {
+ rlen = 1.0 / length(v);
+ v.x *= rlen;
+ v.y *= rlen;
+ v.z *= rlen;
+}
 
 // Camera and movement code taken from /games/
 //Handle input and player movement

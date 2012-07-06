@@ -5,12 +5,13 @@ static spheres[8];
 {
    nx=0; ny=0; nz=0;
    
-   gradient(x,y,z,nx,ny,nz);
-   normalize(nx,ny,nz);
+	 r = 255; g = 255; b = 255;
+   //gradient(x,y,z,nx,ny,nz);
+   //normalize(nx,ny,nz);
    
-   r=128+(nx)*127;
-   g=128+(ny)*127;
-   b=128+(nz)*127;
+   //r=128+(nx)*127;
+   //g=128+(ny)*127;
+   //b=128+(nz)*127;
    
    return func(x,y,z);
 }
@@ -64,6 +65,11 @@ func(x,y,z)
    
 
    box = x^6 + y^6 + z^6;
+	 siz = .95;
+	 //box = (x < +siz && x > -siz &&
+	 //       y < +siz && y > -siz &&
+	 //			  z < +siz && z > -siz );
+	 
    //v = union( all_spheres , 2 * box);
 
 #if 1
@@ -94,10 +100,11 @@ func(x,y,z)
 
 #endif
    
-   v = union(v ,box);
+   v = union(v,box);
    
    limit = 2/voxres;
-   return abs(v-limit) < limit;
+	 return abs(v-limit) <= limit;
+	 
 }
 
 gradient(x,y,z,&nx,&ny,&nz)

@@ -7,7 +7,7 @@ struct vec{x,y,z;}
    cang = mousx/xres*2*PI;
    //cang = time;
    dst = -25;
-   setcam(sin(cang)*dst,-10,cos(cang)*dst,cang,0);
+   setcam(sin(cang)*dst,0,cos(cang)*dst,cang,0);
    
    
    vec p;

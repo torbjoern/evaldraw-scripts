@@ -1,42 +1,34 @@
-enum{imgW = 600, imgH = 600, tileSiz = 60} // adjust these according to the image size
-enum{W=imgW/tileSiz+1, H=imgH/tileSiz+1 };
+enum{imgW = 200, imgH = 200, tileSiz = 10} // adjust these according to the image size
+//enum{imgW=320, imgH=200, tileSiz = 10}
+enum{W = 1+(imgW)/(tileSiz), 
+     H = 1+(imgH)/(tileSiz) };
 static offsX[W][H];
 static offsY[W][H];
 static offsXV[W][H];
 static offsYV[W][H];
-static offsXINT[W][H];
-static offsYINT[W][H];
-static offsXacc[W][H];
-static offsYacc[W][H];
-static offsC[W][H];
+static offsColor[W][H];
 
-/*
-static norms[3][3] =
-{
-   0, 16, 32,
-   32, 16*1.414214, 16*2.236068,
-   32, 16*2.236068, 32*1.414214
-};
-*/
-
+//1.4142135623730950488016887242097
 static norms[3][3] =
 {
    0, tileSiz, tileSiz*2,
-   tileSiz*2, tileSiz*1.414214, tileSiz*2.236068,
+   tileSiz*1, tileSiz*1.414214, tileSiz*2.236068,
    tileSiz*2, tileSiz*2.236068, tileSiz*2*1.414214
 };
 
 
 static pal[255]; // palette for funky texture.
 
-static img1[imgW][imgH]; // original
-static img2[imgW][imgH]; // temp
-
+// two temporaries
+static img1[imgW][imgH];
+static img2[imgW][imgH];
+// non-modified image
+static baseimage[imgW][imgH];
 // Tweak em!
 static useImg = 1;
-static randNodeStart = 0;
-static springDampning = 0.9999;
-static elasticity = 0.00001;
+static randNodeStart = 1;
+static springDampning = 0.995; //.9999;
+static elasticity = 0.000001; //0.00001;
 ()
 {
    cls(0); clz(1e32);
@@ -49,125 +41,177 @@ static elasticity = 0.00001;
          for(x=0; x<imgW; x++)
          for(y=0; y<imgH; y++)
          {
-            img1[x][y] = pic(x,y);
+            img1[x][y] = pic(x,y); //pic("pawn1.gif",x,y);
          }
       }
       else
       {
-         DrawTexture(tileSiz,tileSiz); 
-      }  
+         createTexture(tileSiz,tileSiz); 
+      }
+			
+			for(x=0; x<imgW; x++)
+			for(y=0; y<imgH; y++){
+				baseImage[x][y] = img1[x][y];
+			}
    }
 
    
-   for(i=0; i<10; i++)
-   Relax();
+   for(i=0; i<10; i++){
+      Relax();
+   }
    
    TextureWarp(); // read img1, store in img2
-   //mix(); // try turning on/off
    
-   static screen[imgh][imgw]; // contains texture to fill screen.
+	 mix(); // try turning on/off
+	 //#define USE_FILTER
+	 #ifdef USE_FILTER
+	 applyFilter();
+	 #endif
+   
+
    for(x=0; x<imgw; x++)
    for(y=0; y<imgh; y++)
    {
-      //setcol( result[x][y] ); setpix(x,y);
-      screen[y][x] = img2[x][y]; //swap x,y
+      setcol( img2[x][y] ); setpix(x,y);
+			#ifdef USE_FILTER 
+			img1[x][y] = img2[x][y];
+			#endif
    }
-   
-   t=glsettex(screen,imgw,imgh);
-   
-   //
-   //drawspr(xres/2, yres/2,imgw,0);
-   //texquad(0,0,xres,yres);
-   
-   setcol(0xffffff); // full brightness
-   texquad(0,0,xres,yres);
-   glremovetex(t);
-   
-   
    agitateGrid();   
-   //drawGrid();
    
-}
-
-
-texquad(x,y,width,height)
-{
-   glBegin(GL_COMPLEX);
-   glTexCoord(0,0);glVertex(x,y);
-   glTexCoord(1,0);glVertex(x+width,y);
-   glTexCoord(1,1);glVertex(x+width,y+height);
-   glTexCoord(0,1);glVertex(x,y+height);
-   glEnd();
+	 enum{KEY_D = 32}
+   if(keystatus[KEY_D]) drawGrid();
+   
 }
 
 agitateGrid(){
-   direction = 0;
-   if(bstatus == 1)
-   {
-      direction = 2;
+   
+  direction = 0;
+   if(bstatus == 1) {
+      direction = 1;
+   } else if(bstatus == 2) {
+      direction = -1;
    }
-   else if(bstatus == 2)
-   {
-      direction = -2;
-   }
+    
    if(direction != 0)
-   for(x=0; x<W; x++)
-   for(y=0; y<H; y++)
+   for(x=1; x<W-1; x++)
+   for(y=1; y<H-1; y++)
    {
-      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
-      {
-         // dont disturb edge nodes
-      }
-      else{
-      xp = x*tileSiz; yp = y*tileSiz;
-      //if(xp < mousx+30 && xp > mousx-30)
-      //if(yp < mousy+30 && yp > mousy-30)
-      distToPoint = abs( (mousx-xp)^2 + (mousy-yp)^2 );
+      mx = mousx; //W*mousx/xres;
+      my = mousy; //H*mousy/yres;
+   
+      //xp = x/W*imgw;
+      //yp = y/H*imgh;
       
-      if(distToPoint < 500)
-      {
-         d = atan2(yp-mousy, xp-mousx);
-         //dist = ( (xp-mousx)^2 + (yp-mousy)^2);
-         
-         //offsX[x][y] += direction*cos(d) * min(.5, max(0,dist) );
-         //offsY[x][y] += direction*sin(d) * min(.5, max(0,dist) );
-         
-         offsX[x][y] += direction*cos(d);
-         offsY[x][y] += direction*sin(d);
-      }
+      xp = x*tileSiz;
+      yp = y*tileSiz;
+      
+      dx = xp-mx;
+      dy = yp-my;
+      dSq = dx^2 + dy^2;
+      d = sqrt( dSq );
+      if ( d < tileSiz*2.5 && d > tileSiz*0.01 ) {
+        amount = .02 * direction;
+        //amount = direction * (tileSiz*0.1) / (d+1);
+        offsXV[x][y] += amount * (dx/d);
+        offsYV[x][y] += amount * (dy/d);
       }
    } 
 }
 
-drawGrid(){
-   for(x=0; x<W; x++)
-   for(y=0; y<H; y++)
+drawGrid(){   
+   setcol(255,0,0);
+   for(x=0; x<W-1; x++)
    {
-      //c = int(rnd+.2)*255;
-      c=255; setcol(c,c,c);
-      drawsph( offsX[x][y], offsY[x][y], 2);
+      for(y=0; y<H-1; y++) 
+      {
+         Ax=offsX[x][y] ;
+         Ay=offsY[x][y] ;
+
+         Bx=offsX[x+1][y] ;
+         By=offsY[x+1][y] ;
+
+         Cx=offsX[x+1][y+1] ;
+         Cy=offsY[x+1][y+1] ;
+
+         Dx=offsX[x][y+1] ;
+         Dy=offsY[x][y+1] ;
+         moveto(Ax,Ay);
+         lineto(Bx,By);
+         lineto(Cx,Cy);
+         lineto(Dx,Dy);
+         lineto(Ax,Ay);
+      }
    }
 }
 
 mix()
 {
+   rn=0; gn=0; bn=0; // new RGB
+   ro=0; go=0; bo=0; // old RGB
+   rb=0; gb=0; bb=0; // base RGB
    for(x=0; x<imgW; x++)
    for(y=0; y<imgH; y++){
+      getrgb(img2[x][y],rn,gn,bn); // newly warped
+      getrgb(img1[x][y],ro,go,bo); // previous frame
+      getrgb(baseimage[x][y],rb,gb,bb);
+			
+      tnew = .5; // 35% - 50%
+      told = .9-tnew; // 80% - 90%
+			tbase = 1 - tnew - told;
       
-      rn=0; gn=0; bn=0; // new RGB
-      ro=0; go=0; bo=0; // old RGB
-      hex2rgb(img2[x][y],rn,gn,bn); // newly warped
-      hex2rgb(img1[x][y],ro,go,bo); // previous frame
-      
-      new = 10; // Tweak this. from 1-10 f.ex. Tweak everything :)
-      old = 100-new;
-      new /= 100;
-      old /= 100;
-      
-      red = rn*new + ro*old;
-      green = gn*new + go*old;
-      blue = bn*new + bo*old;
+      red   = tnew*rn + told*ro + tbase*rb;
+      green = tnew*gn + told*go + tbase*gb;
+      blue  = tnew*bn + told*bo + tbase*bb;
       img1[x][y] = rgb(red,green,blue);
+   }
+}
+
+
+// img1 -> img2
+applyFilter()
+{
+	enum{filterWidth=3, filterHeight=3}
+	static filter[filterWidth][filterHeight] =  
+	{ 
+		  // box?
+			 /*0, .5, 0, 
+			 .5,.5,.5, 
+			 0, .5, 0 */
+			 
+			 // gauss
+			 1/16, 2/16, 1/6,
+			 2/16, 4/16, 2/16,
+			 1/16, 2/16, 1/16
+	};
+	static factor = .95;
+	static bias = 0;
+
+
+   xmax = imgW;
+   ymax = imgH;
+   for(x=0; x<xmax; x++)
+   for(y=0; y<ymax; y++)
+   {
+      r=0; g=0; b=0;
+      
+      for(filterX=0; filterX < filterWidth; filterX++)
+      for(filterY=0; filterY < filterHeight; filterY++)
+      {
+         imageX = (x-filterWidth / 2 + filterX + xmax) % xmax;
+         imageY = (y-filterHeight / 2 + filterY + ymax) % ymax;
+
+         imgR=0; imgG=0; imgB=0;
+         getrgb(img1[imageX][imageY], imgr, imgg, imgb );
+         r += imgr * filter[filterX][filterY];
+         g += imgg * filter[filterX][filterY];
+         b += imgb * filter[filterX][filterY];
+      }
+      
+      r = min(max(factor*r+bias,0),255);
+      g = min(max(factor*g+bias,0),255);
+      b = min(max(factor*b+bias,0),255);
+      img2[x][y] = rgb( r,g,b );
    }
 }
 
@@ -180,29 +224,35 @@ TextureWarp()
    }
 }
 
+//round(x) { return int(x-0.5); }
+//round(x) { return floor(x+0.5); }
+//round(x) { return ceil(x-0.5); }
+round(x) { return x; }
+
 // img1 -> img2
 TextureBlock(xo,yo)
 {
-   xi = xo * tileSiz;
-   yi = yo * tileSiz;
+   xi = round(xo * tileSiz);
+   yi = round(yo * tileSiz);
 
-   Ax=offsXint[xo][yo];
-   Ay=offsYint[xo][yo];
+   Ax=offsX[xo][yo];
+   Ay=offsY[xo][yo];
    
-   Bx=offsXint[xo+1][yo];
-   By=offsYint[xo+1][yo];
+   Bx=offsX[xo+1][yo];
+   By=offsY[xo+1][yo];
    
-   Cx=offsXint[xo][yo+1];
-   Cy=offsYint[xo][yo+1];
+   Cx=offsX[xo][yo+1];
+   Cy=offsY[xo][yo+1];
    
-   Dx=offsXint[xo+1][yo+1];
-   Dy=offsYint[xo+1][yo+1];
+   Dx=offsX[xo+1][yo+1];
+   Dy=offsY[xo+1][yo+1];
    
    // Image corners, Left, right
    // A B
    // C D
    TX1=0, TY1=0, TX2=0, TY2=0; tx=0; ty=0;
 
+	// Delta's
    VLDx = (Cx-Ax)/tileSiz; // Rate of change X down left
    VRDx = (Dx-Bx)/tileSiz; // X down right
    VLDy = (Cy-Ay)/tileSiz; // Y down left
@@ -220,9 +270,10 @@ TextureBlock(xo,yo)
       tx = TX1;
       ty = TY1;
       
-      for(x=xi; x<xi+tileSiz; x++)
+      
+			for(x=xi; x<xi+tileSiz; x++)
       {
-         img2[x][y] = img1[ tx ][ ty ];
+         img2[x][y] = img1[tx][ty];
          tx += HDx;
          ty += HDy;
       }
@@ -235,20 +286,20 @@ TextureBlock(xo,yo)
 }
 
 // Weird texture!
-DrawTexture(xs,ys)
+createTexture(xs,ys)
 {
    VLDc=0; VRDc=0; HDc=0;
    C1=0; C2=0; c=0;
    x=0; y=0; xi=0; yi=0;
-   
-   for(yi=0; yi<H-1; yi++)
-   for(xi=0; xi<W-1; xi++)
+	 // bilinear filtering
+   for(yi=0; yi<H; yi++)
+   for(xi=0; xi<W; xi++)
    {
-      VLDc = (offsC[xi][yi+1] - offsC[xi][yi])/ys;
-      VRDc = (offsC[xi+1][yi+1] - offsC[xi+1][yi])/ys;
+      VLDc = (offsColor[xi][yi+1] - offsColor[xi][yi]) / ys;
+      VRDc = (offsColor[xi+1][yi+1] - offsColor[xi+1][yi]) / ys;
       
-      C1 = offsC[xi][yi];
-      C2 = offsC[xi+1][yi];
+      C1 = offsColor[xi][yi];
+      C2 = offsColor[xi+1][yi];
       
       for(y=yi*ys; y<(yi+1)*ys; y++)
       {
@@ -257,7 +308,7 @@ DrawTexture(xs,ys)
          
          for(x=xi*xs; x<(xi+1)*xs; x++)
          {
-            img1[x][y] = 4*pal[c];
+            img1[x][y] = 10*pal[c];
             c += HDc;
          }
          C1 += VLDc;
@@ -269,7 +320,7 @@ DrawTexture(xs,ys)
 
 Init()
 {
-   // setup garish palette
+// init palette for procedural image
    for(i=0; i<64; i++)
    {
       pal[i]     = rgb(i,   0,    63-i);
@@ -278,6 +329,13 @@ Init()
       pal[i+192] = rgb(i,   0,    63-i);
    }   
 
+
+   for(y=0; y<H; y++)
+   for(x=0; x<W; x++)
+   {
+      offsColor[x][y] = int(rnd*255); // procedural image color
+	 }
+// init grid
    for(y=0; y<H; y++)
    for(x=0; x<W; x++)
    {
@@ -301,12 +359,6 @@ Init()
          offsXv[x][y] = 0;
          offsYv[x][y] = 0;
       }
-      offsXint[x][y] = offsX[x][y];
-      offsYint[x][y] = offsY[x][y];
-      
-      offsXacc[x][y] = 0;
-      offsYacc[x][y] = 0;
-      offsC[x][y] = int(rnd*255); 
    }
 }
 
@@ -344,9 +396,6 @@ Relax()
                   
                   offsXv[xi][yi] += xspring;
                   offsYv[xi][yi] += yspring;
-                  
-                  offsXv[xi][yi] *= springDampning;
-                  offsYv[xi][yi] *= springDampning;
                }   
             }
          }
@@ -356,73 +405,9 @@ Relax()
    for(y=1; y<H-1; y++)
    for(x=1; x<W-1; x++)
    {
-      if( (x==0) || (x==W-1) || (y==0) || (y==H-1) )
-      {
-      }
-      else
-      {
-         offsX[x][y] += offsXv[x][y];
-         offsY[x][y] += offsYv[x][y];
-         offsXv[x][y] *= 0.9999;
-         offsYv[x][y] *= 0.9999;
-      }
-      
-      // need to trunc this to integer?
-      offsXint[x][y] = ( offsX[x][y] );
-      offsYint[x][y] = ( offsY[x][y] );
-      
-      /*
-      // allows it to handle non-integer values of points on the grid
-      offsXacc[x][y] += offsX[x][y];
-      if(offsXacc[x][y] > 1)
-      {
-         offsXacc[x][y] -= 1;
-         offsXint[x][y] += 1;
-      }
-      if(offsXacc[x][y] < 1)
-      {
-         offsXacc[x][y] += 1;
-         offsXint[x][y] -= 1;
-      }      
-
-      offsYacc[x][y] += offsY[x][y];
-      if(offsYacc[x][y] > 1)
-      {
-         offsYacc[x][y] -= 1;
-         offsYint[x][y] += 1;
-      }
-      if(offsYacc[x][y] < 1)
-      {
-         offsYacc[x][y] += 1;
-         offsYint[x][y] -= 1;
-      } 
-      */
-
-   }
-   
-   // make sure points on the grid never stray outside screen
-   for(x=0; x<W-1; x++)
-   {
-      if( offsYint[x][1] < 0 ) offsYint[x][1] = 0;
-      if( offsYint[x][H-2] > imgH ) offsYint[x][H-2] = imgH;
-   }
-   for(y=0; y<H-1; y++)
-   {
-      if( offsXint[1][y] < 0 ) offsXint[1][y] = 0;
-      if( offsXint[W-2][y] > imgW ) offsXint[W-2][y] = imgW;
+      offsX[x][y] += offsXv[x][y];
+      offsY[x][y] += offsYv[x][y];
+      offsXv[x][y] *= springDampning;
+      offsYv[x][y] *= springDampning;
    }
 }
-hex2rgb(mrgb,&r,&g,&b)
-{  
-   r = (mrgb / 2^16);
-   g = (mrgb / 2^8) % 256;
-   b = mrgb % 256;   
-}
-
-
-
-
-
-
-
-
