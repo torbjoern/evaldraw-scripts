@@ -163,7 +163,6 @@ ray_sphere_isect( ray_t ray, sphere_t sphere, &t)
    double det = (b * b) - dot( v, v ) + sphere.radi^2;
    
    t = -1;
-   
    if (det > 0)
    {
       det = sqrt( det );
@@ -184,7 +183,6 @@ ray_sphere_isect( ray_t ray, sphere_t sphere, &t)
          }
       }
    }
-
    return -1;
 }
 
@@ -195,7 +193,6 @@ ray_cylinder_isect( ray_t ray, cylinder_t cyl, &t)
    vec ao;
    vec aoxab;
    vec vxab;
-
    
    vecSub( ab, cyl.b, cyl.a );
    vecSub( ao, ray.origin, cyl.a );
@@ -215,9 +212,8 @@ ray_cylinder_isect( ray_t ray, cylinder_t cyl, &t)
    t1 = -b - sqrt( b^2 - 4*a*c ) / det;
    t2 = -b + sqrt( b^2 - 4*a*c ) / det;
    
-   if ( det > 0.0 ) // real soln?
+   if ( det > 0.0 ) // if real soln?
    {
-
       if (t2 > 0)
       {
          if(t1 < 0)
@@ -227,18 +223,12 @@ ray_cylinder_isect( ray_t ray, cylinder_t cyl, &t)
          }
          else
          {
-
             t = t1;
             return 1;
          }
       }
    }
-   
-
-
-
    return -1;
-
 }
 
 vecSub( vec out, vec a, vec b)
@@ -254,7 +244,6 @@ vecCross( vec out, vec a, vec b)
    out.y = a.z*b.x - a.x*b.z;
    out.z = a.x*b.y - a.y*b.x;
 }
-
 
 dot( vec a, vec b)
 {
