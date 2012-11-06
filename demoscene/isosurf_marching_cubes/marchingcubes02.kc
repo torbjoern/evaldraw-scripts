@@ -354,7 +354,7 @@ static a2iTriangleConnectionTable[256][16] =
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-static iDataSetSize =12.0;
+static iDataSetSize =24.0;
 static fStepSize;
 
 static sSourcePoint[numSources][3];
@@ -586,12 +586,12 @@ vNormalizeVector(rfVectorResult[3], rfVectorSource[3])
 
 MarchingCubesBrute()
 {
-        for(iX = 0; iX < iDataSetSize; iX++)
-        for(iY = 0; iY < iDataSetSize; iY++)
-        for(iZ = 0; iZ < iDataSetSize; iZ++)
-        {
-                MarchCube(iX*fStepSize, iY*fStepSize, iZ*fStepSize, fStepSize);
-        }
+for(iX = 0; iX < iDataSetSize; iX++)
+for(iY = 0; iY < iDataSetSize; iY++)
+for(iZ = 0; iZ < iDataSetSize; iZ++)
+{
+	MarchCube(iX*fStepSize, iY*fStepSize, iZ*fStepSize, fStepSize);
+}
 }
 
 MarchCube(fX, fY, fZ, fScale)

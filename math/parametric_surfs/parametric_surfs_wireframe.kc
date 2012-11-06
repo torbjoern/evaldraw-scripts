@@ -66,26 +66,21 @@ static color[dim1][dim2];
    {
 
       
-      //#define TRI // slower than complex
+      #define TRI // slower than complex
       #ifdef TRI
       glBegin(GL_TRIANGLE_STRIP);
       for(j=0; j<dim2; j++)  
-      {
-         //glBegin(GL_LINE_STRIP);
-         glBegin(GL_TRIANGLE_STRIP);
-         for(j=0; j<dim2; j++)  
-         {
-            //setcol( color[i][j]  );
+			{
+            setcol( color[i][j]  );
             glTexCoord( sc*i/dim1, sc*j/dim2);
             glVertex( px[i][j], py[i][j], pz[i][j] );
             
-            //setcol( color[i+1][j] );
+            setcol( color[i+1][j] );
             glTexCoord( sc*(i+1)/dim1, sc*j/dim2);
             glVertex( px[i+1][j], py[i+1][j], pz[i+1][j] );     
-         } 
-         glEnd();   
+         
       } 
-      glEnd();
+			glEnd();
       #else
          // when running unbounded I get 4 Mcc with gl_complex and 7-8 with gl_triangle_strip
 

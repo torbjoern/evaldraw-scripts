@@ -79,7 +79,7 @@ struct ray_t{
   
       
       if ( bstatus==0 ){
-         // reflect
+         // reflect, R=I-2*<N,I>*N
          rx = incoming.x - 2 * dpr * normal.x;
          ry = incoming.y - 2 * dpr * normal.y;
       }else{ 

@@ -71,17 +71,12 @@ struct sphere_t
         for (y=0; y<height; y++)
         {
             
-            vec uscaled;
-            vecScalar( uscaled, u, (x-width/2.0)*pw );
-            vec vscaled;
-            vecScalar( vscaled, v, (y-height/2.0)*ph );
+            vec uscaled; vecScalar( uscaled, u, (x-width/2.0)*pw );
+            vec vscaled; vecScalar( vscaled, v, (y-height/2.0)*ph );
             
-            vec rayPoint;
-            set( rayPoint, vpc.x+uscaled.x+vscaled.x,
-                           vpc.y+uscaled.y+vscaled.y,
-                           vpc.z+uscaled.z+vscaled.z );
-            //vecadd( rayPoint, vpc, uscaled );
-            //vecadd( rayPoint, rayPoint, vscaled );
+            vec rayPoint = {vpc.x+uscaled.x+vscaled.x,
+                            vpc.y+uscaled.y+vscaled.y,
+                            vpc.z+uscaled.z+vscaled.z };
             
             vec rayDir;
             vecsub( rayDir, rayPoint, camera.position );
@@ -105,11 +100,8 @@ castRay( ray_t ray, sphere_t sphere )
 {
    vec s;
    vecsub( s, ray.origin, sphere.center );
-   vec rayDir;
-   set( rayDir, ray.dir );
-   normalize( rayDir );
    
-   sv = dot(s, rayDir );
+   sv = dot(s, ray.dir );
    ss = dot(s,s);
    discr = sv*sv - ss + sphere.radius^2;
    if ( discr < 0.0 ) return 0;

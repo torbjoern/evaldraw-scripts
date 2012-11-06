@@ -640,20 +640,6 @@ drawstring(a[10])
       tx += simplex[c][1]*.9;
    }
 }
-
-
-drawstring3D(a[10])
-{
-   scale = .05;
-   for(i=0; i<10; i++)
-   {
-      c = a[i] - 32;
-      if ( c == 95 ) continue; // skip space
-      drawChar3D(c, scale);
-      tx += simplex[c][1]*scale;
-   }
-}
-
 drawChar(c){
 
    verts = simplex[c][0];
@@ -673,6 +659,17 @@ drawChar(c){
    lineto(tx+simplex[c][i+0],ty-simplex[c][i+1]);
 }
 
+drawstring3D(a[10])
+{
+   scale = .1;
+   for(i=0; i<10; i++)
+   {
+      c = a[i] - 32;
+      if ( c == 95 ) continue; // skip space
+      tx += drawChar3D(c, scale) * .8;
+      //tx += simplex[c][1]*scale;
+   }
+}
 
 drawChar3D(c,scale){
   verts = simplex[c][0];
@@ -700,8 +697,7 @@ drawChar3D(c,scale){
     {
       start_p.x = tx + simplex[c][i+2]*scale-scale*2;
       start_p.y = ty - simplex[c][i+3]*scale+scale*2;
-      start_p.z = tz;
-      
+      start_p.z = tz; 
     }
     else // lineTo end
     {
@@ -714,7 +710,8 @@ drawChar3D(c,scale){
          
          start_p = end_p;  
       }    
-   }   
+   }
+	return simplex[c][1]*scale;   
 }
 
 err(arg){

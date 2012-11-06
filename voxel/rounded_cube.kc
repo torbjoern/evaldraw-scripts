@@ -64,12 +64,12 @@ roundedBox(x,y,z){
 
 apple(x,y,z)
 {
-s = 3;
-x *= s; y *= s; z *= s;
-v1 = (2*x^2 + 2*y^2 + 2*z^2 -2)^3;
-v2 = .5*(2*x^2 + 2*y^2)*z^4;
-v = v1-v2;
-return v<=lim;
+	s = 3;
+	x *= s; y *= s; z *= s;
+	v1 = (2*x^2 + 2*y^2 + 2*z^2 -2)^3;
+	v2 = .5*(2*x^2 + 2*y^2)*z^4;
+	v = v1-v2;
+	return v<=lim;
 }
 
 box(x,y,z,halfsize){

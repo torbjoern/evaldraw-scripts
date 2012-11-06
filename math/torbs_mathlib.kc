@@ -177,6 +177,14 @@ vecAdd( vec out, vec a, vec b)
    out.y = a.y + b.y;
    out.z = a.z + b.z;   
 }
+
+vecAdd( vec out, vec b)
+{
+   out.x += b.x;
+   out.y += b.y;
+   out.z += b.z;   
+}
+
 vecSub( vec out, vec a, vec b)
 {
    out.x = a.x - b.x;
@@ -223,4 +231,16 @@ rayPoint( vec out, vec pos, vec dir, t ){
    out.x = pos.x + t*dir.x;
    out.y = pos.y + t*dir.y;
    out.z = pos.z + t*dir.z;
+}
+
+
+angleBetween(vec v1, vec v2)
+{
+   ftol = 1e-7;
+   if( fabs(v1.x-v2.x) < ftol && fabs(v1.y-v2.y) < ftol && fabs(v1.z-v2.z) < ftol) return 0;
+   
+   aLen = length(v1);
+   bLen = length(v2);
+   dpr = vecdot(v1,v2);
+   return acos( dpr / (aLen*bLen) );
 }

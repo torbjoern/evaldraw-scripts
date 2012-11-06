@@ -131,28 +131,28 @@ glCullface(GL_NONE);
       for(j=0; j<segs; j+=2)
       {
          v = j*rangeV / (segs-1.0);      
-         p3x=0; p3y=0; p3z=0;  
+         fx=0; fy=0; fz=0;  
          {
             wv = bernstein(numpts-1,0,v);
-            p3x += wv * p0x;
-            p3y += wv * p0y;
-            p3z += wv * p0z;
+            fx += wv * p0x;
+            fy += wv * p0y;
+            fz += wv * p0z;
             
             wv = bernstein(numpts-1,1,v);
-            p3x += wv * p1x;
-            p3y += wv * p1y;
-            p3z += wv * p1z;
+            fx += wv * p1x;
+            fy += wv * p1y;
+            fz += wv * p1z;
             
             wv = bernstein(numpts-1,2,v);
-            p3x += wv * p2x;
-            p3y += wv * p2y;
-            p3z += wv * p2z;
+            fx += wv * p2x;
+            fy += wv * p2y;
+            fz += wv * p2z;
          }
-         verts[vertIdx+0] = p3x;
-         verts[vertIdx+1] = p3y;
-         verts[vertIdx+2] = p3z;
+         verts[vertIdx+0] = fx;
+         verts[vertIdx+1] = fy;
+         verts[vertIdx+2] = fz;
          vertIdx+=3;
-         drawsph(p3x,p3y,p3z,.1);
+         drawsph(fy,fx,fz,.1);
                   
          
       }

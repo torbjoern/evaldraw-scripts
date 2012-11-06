@@ -50,7 +50,7 @@ static vec center;
    
    enum{
       EULER=1, VERLET=2, RK4=3, 
-      INTEGRATOR=2; // <-change this!
+      INTEGRATOR=3; // <-change this!
    }
 
    #if INTEGRATOR==EULER

@@ -87,8 +87,8 @@
    for(i=0; i<steps; i++)
    {
       t = i/(steps-1);
-      px = xpos1+lerp(xpos1,xpos2,t);
-      py = ypos1+lerp(ypos1,ypos2,t);
+      px = lerp(xpos1,xpos2,t);//xpos1+lerp(xpos1,xpos2,t);
+      py = lerp(ypos1,ypos2,t);//ypos1+lerp(ypos1,ypos2,t);
 
       drawsph(px,py,-10);   
    }
@@ -107,9 +107,14 @@
    
 }
 
+lerp(a,b,t)
+{
+	return t*a + (1-t)*b;
+}
+/*
 lerp(x1,x2,t){
    (x2-x1)*t;
-}
+}*/
 
 lerp2(x1,y1,x2,y2,nx,&ny){
    ny = y1+(nx-x1)*(y2-y1)/(x2-x1);

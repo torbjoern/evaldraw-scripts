@@ -23,6 +23,7 @@ static mtx[9];
    
    ang2mat( mousx/xres*2*PI, mousy/yres*2*PI, mtx );
    cylinder(6,20,16);
+	 moveto(0,20); printnum(num_verts);
    
    //cylinderSolid(4.9,5,8);
 
@@ -178,10 +179,6 @@ cylinder(radius,length,segments)
    }
    
    draw_verts();
-   
-   
-   
-
 }
 
 vecset( vec v, x,y,z )

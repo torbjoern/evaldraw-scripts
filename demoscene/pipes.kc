@@ -2,6 +2,11 @@
 // drag mouse1 to zoom
 // drag mouse2 to rotate view
 // space to add more pipes
+// Todo: 
+// -add probability of turning in  a certain dir. Ex. pipes that mostly move in XY or XZ or YZ plane
+// -vine like behaviour. pipes that seek to tangle around other pipes (not self)
+// -branching
+// -pipe type that eats dead pipes and needs food to survive
 struct vec
 {
    x,y,z;
@@ -20,10 +25,10 @@ struct sphere_t
 }
 
 //enum{WORLD_WIDTH = 32, WORLD_HEIGHT = 32, WORLD_LENGTH = 32}
-enum{WORLD_WIDTH = 64, WORLD_HEIGHT = WORLD_WIDTH, WORLD_LENGTH = WORLD_WIDTH}
+enum{WORLD_WIDTH = 32, WORLD_HEIGHT = WORLD_WIDTH, WORLD_LENGTH = WORLD_WIDTH}
 static world[WORLD_WIDTH][WORLD_HEIGHT][WORLD_LENGTH];
 
-enum{MAX_TAILS = 512}
+enum{MAX_TAILS = 512} // or number of joints/direction turns allowed before dead
 
 struct pipe_t
 {
@@ -88,7 +93,7 @@ userControls()
 {
 	time = klock(0);
 	static spawnTime = 0.;
-	if ( (keystatus[57]&&spawnTime < time) || spawnTime < time ) {
+	if ( (keystatus[57]&&spawnTime < time) /*|| spawnTime < time*/ ) {
 		spawnTime = time + 2.;
 		spawnPipe( 1+int(rnd*WORLD_WIDTH-2), 1+int(rnd*WORLD_HEIGHT-2), 1+int(rnd*WORLD_LENGTH-2) );
 	}
@@ -142,7 +147,6 @@ lineto( p[3] ){ lineto(p[0], p[1], p[2]); }
 drawWorld()
 {
 		setcol(255,255,255);
-		
 
 		static p1[3] = {0,0,0};
 		static p2[3] = {0,0,WORLD_LENGTH};
@@ -205,27 +209,28 @@ drawWorld()
 
 drawPipes()
 {
-   radi = 0.45;
+   radi = 0.1;
    vec p;
    for(i=0; i<num_pipes; i++){
       if ( pipes[i].alive == 0 ) { setcol(pipes[i].deadcolor); } else { setcol(pipes[i].color); }
       
-      for (j=1; j<pipes[i].num_tails; j++)
+			// Draw pipe joints
+      for (j=0; j<pipes[i].num_tails; j++)
       {
          p = pipes[i].tails[j];
-         drawSph(p.x,p.y,p.z,.5);
+         drawSph(p.x,p.y,p.z,.2);
       }
-      
+			
       p = pipes[i].headPos;
-      //drawSph(p.x,p.y,p.z,.5);
+      drawSph(p.x,p.y,p.z,.5);
 
       nt = pipes[i].num_tails;
-      drawCyl( p, pipes[i].tails[nt-1], radi, DRAWCONE_FLAT0+DRAWCONE_FLAT1  );
+      drawCyl( p, pipes[i].tails[nt-1], radi, DRAWCONE_FLAT0  );
       
 
       //moveto(pipes[i].tails[0].x,pipes[i].tails[0].y,pipes[i].tails[0].z);
       for (j=1; j<pipes[i].num_tails; j++){
-         drawCyl( pipes[i].tails[j-1], pipes[i].tails[j], radi,DRAWCONE_NOCAP );
+         drawCyl( pipes[i].tails[j-1], pipes[i].tails[j], radi,DRAWCONE_NOCAP ); //DRAWCONE_NOCAP1
          //drawcone(pipes[i].tails[j-1].x,pipes[i].tails[j-1].y,pipes[i].tails[j-1].z,radi,
          //            pipes[i].tails[j].x,pipes[i].tails[j].y,pipes[i].tails[j].z,radi,DRAWCONE_NOCAP);
          
@@ -257,7 +262,7 @@ updatePipes()
 {   
    ray_t ray;
 
-   delta = 0.1;
+   delta = .1; // try 0.1, 0.5, 1.0
    vec p, dir, newDir;
    for(i=0; i<num_pipes; i++){
       if ( pipes[i].alive == 0 ) continue;
@@ -269,16 +274,7 @@ updatePipes()
       vec newPos = {p.x+dir.x*delta, p.y+dir.y*delta, p.z+dir.z*delta};
       pipes[i].headPos = newPos;
       p = newPos;
-      /*
-      pipes[i].startP;
-      moveLen = pipes[i].moveLen;
-      vec p = { startP.x + pipes[i].dir.x * moveLen, 
-                startP.y + pipes[i].dir.y * moveLen, 
-                    startP.z + pipes[i].dir.z * moveLen };
-                     
-      
-      */
-      
+
       ray.origin = p;
       ray.dir = dir;
       vec oldpos = {p.x - dir.x, p.y - dir.y, p.z - dir.z };
@@ -304,10 +300,10 @@ updatePipes()
 
             if ( dirChanged ) { pipes[i].dir = newDir; } 
             else 
-                  { 
-                     pipes[i].alive = 0; 
-                     #ifdef DEBUG pipes[i].deadcolor = rgb(255,0,255); #endif 
-                  } 
+            { 
+							pipes[i].alive = 0; 
+							#ifdef DEBUG pipes[i].deadcolor = rgb(255,0,255); #endif 
+            } 
 
          } else { // pipe is not colliding, but be adventureous and look for new dirs
             if ( adventureous )
@@ -340,20 +336,18 @@ updatePipes()
 
 markWorld( vec p ) {
    //world[int(p.x)][int(p.y)][int(p.z)] = 1; // Nope!
-   world[floor(p.x+.5)][floor(p.y+.5)][floor(p.z+.5)] = 1;
-   //world[int(p.x+.5)][ int(p.y+.5)][int(p.z+.5)] = 1;
+   world[floor(p.x+.5)][floor(p.y+.5)][floor(p.z+.5)] = 1; //works
+   //world[int(p.x+.5)][ int(p.y+.5)][int(p.z+.5)] = 1;       //also
 }
 
-
+// Get a new dir that isnt the same as old, or in reverse direction. Don't want pipes moving backwards.
 getNewDir( vec curDir, vec newDir ) {
    if ( fabs(curDir.x) == 1 ) {
       if ( rnd > 0.5 ) {newDir = axisDirs[2+int(rnd*2)]; } else {newDir = axisDirs[4+int(rnd*2)]; }
    }
-   
    else if ( fabs(curDir.y) == 1 ) {
       if ( rnd > 0.5 ) {newDir = axisDirs[0+int(rnd*2)]; } else {newDir = axisDirs[4+int(rnd*2)]; }
    }
-   
    else if ( fabs(curDir.z) == 1 ) {
       if ( rnd > 0.5 ) {newDir = axisDirs[0+int(rnd*2)]; } else {newDir = axisDirs[2+int(rnd*2)]; }
    }
@@ -364,10 +358,16 @@ collides( ray_t ray )
    sphere_t sphere;
    // center is set in loop
    sphere.radi = 0.4;
-
-   for ( i=0; i<WORLD_WIDTH; i++)
-   for ( j=0; j<WORLD_HEIGHT; j++)
-   for ( k=0; k<WORLD_LENGTH; k++){
+	 
+	 ray_grid_x = floor(ray.origin.x+0.5); ray_grid_y = floor(ray.origin.y+0.5); ray_grid_z = floor(ray.origin.z+0.5);
+	 
+	 imin = max(0,ray_grid_x-1); imax = min(WORLD_WIDTH ,ray_grid_x+1 );
+	 jmin = max(0,ray_grid_y-1); jmax = min(WORLD_HEIGHT,ray_grid_y+1 );
+	 kmin = max(0,ray_grid_z-1); kmax = min(WORLD_LENGTH,ray_grid_z+1 );
+	 
+   for ( i=imin; i<=imax; i++)
+   for ( j=jmin; j<=jmax; j++)
+   for ( k=kmin; k<=kmax; k++){
       if ( world[i][j][k] ) 
       {
          sphere.center.x = i;
@@ -387,13 +387,9 @@ collides( ray_t ray )
          t = 0;
          hit = ray_sphere_isect( ray, sphere, t);
          if (hit)
-         if ( t >= 0.0 && t <= 1. )//&& t <= 0.9 && t >= 0.0) 
-         {
-         return 1;
-         }
-
-         }
+         if ( t >= 0.0 && t <= 1. ) { return 1; }
       }
+   }
    return 0;
 }
 
@@ -403,37 +399,36 @@ collides( ray_t ray )
 // -crash on first move.
 spawnPipe( gx, gy, gz )
 {
-   gx = int(gx);
-   gy = int(gy);
-   gz = int(gz);
-   if ( num_pipes == MAX_PIPES ) return;
-   if ( world[gx][gy][gz] == 1 ) return; // bad spawn pos
-   //if ( world[int(gx)][int(gy)][int(gz)] ) return; // bad spawn pos
+	gx = int(gx);
+	gy = int(gy);
+	gz = int(gz);
+	if ( num_pipes == MAX_PIPES ) return;
+	if ( world[gx][gy][gz] == 1 ) return; // bad spawn pos
 
-   pipes[num_pipes].alive = 1;
-   vec startPos = {gx, gy, gz};
-   pipes[num_pipes].moveLen = 0.;
-   pipes[num_pipes].headPos = startPos;
-   pipes[num_pipes].dir = axisDirs[int(rnd*6)];
+	pipes[num_pipes].alive = 1;
+	vec startPos = {gx, gy, gz};
+	pipes[num_pipes].moveLen = 0.;
+	pipes[num_pipes].headPos = startPos;
+	pipes[num_pipes].dir = axisDirs[int(rnd*6)];
 
-   pipes[num_pipes].tails[0] = startPos;
-   pipes[num_pipes].num_tails = 1;
+	pipes[num_pipes].tails[0] = startPos;
+	pipes[num_pipes].num_tails = 1;
 
-   // Test to see if current dir is legal
-   ray_t ray;
-   ray.origin = pipes[num_pipes].headPos;
-   ray.dir = pipes[num_pipes].dir;
-   if ( collides( ray ) ) {
-      return;
-   } else { // make our mark on the world
-      markWorld( startPos );
-   }
-   
-    colorParam = rnd*6;
-   pipes[num_pipes].color = ryb2rgb(colorParam);
-   pipes[num_pipes].deadcolor = ryb2rgb( (colorParam+3)%6);
-    pipes[num_pipes].tendency_to_turn = rnd;
-   num_pipes++;
+	// Test to see if current dir is legal
+	ray_t ray;
+	ray.origin = pipes[num_pipes].headPos;
+	ray.dir = pipes[num_pipes].dir;
+	if ( collides( ray ) ) {
+		return;
+	} else { // make our mark on the world
+		markWorld( startPos );
+	}
+
+	colorParam = rnd*6;
+	pipes[num_pipes].color = ryb2rgb(colorParam, .8);
+	pipes[num_pipes].deadcolor = ryb2rgb( colorParam, .5);
+	pipes[num_pipes].tendency_to_turn = rnd*.25;
+	num_pipes++;
 }
 
 ray_sphere_isect( ray_t ray, sphere_t sphere, &t)
@@ -496,25 +491,27 @@ ang2mat(hang,vang,mat[9])
    mat[5] = mat[6]*mat[1] - mat[7]*mat[0];
 }
 
-lerp3(vout[3], v1[3], v2[3], t)
+lerp3(vec vout, vec v1, vec v2, t)
 {
-   vout[0] = (1-t)*v1[0] + t*v2[0];
-   vout[1] = (1-t)*v1[1] + t*v2[1];
-   vout[2] = (1-t)*v1[2] + t*v2[2];
+   vout.x = (1-t)*v1.x + t*v2.x;
+   vout.y = (1-t)*v1.y + t*v2.y;
+   vout.z = (1-t)*v1.z + t*v2.z;
 }
 
-ryb2rgb( t ) // optional intensity?
+ryb2rgb( t, intensity ) // t [0,6] and intensity [0,1]
 {
 if ( t < 0 ) t = 0;
 if ( t > 6 ) t = 6;
-   static vout[3];
+   vec vout;
 
-   static red[3] = {255,   0, 0};
-   static orange[3] = {255, 127, 0};   
-   static yellow[3] = {255,   255, 0};
-   static green[3] = {0,   255, 0};
-   static blue[3] = {0,    0,255};
-   static violet[3] = {127, 0, 255};
+	 i1 = intensity * 255;
+	 i2 = intensity * 127;
+   vec red = {i1,   0, 0};
+   vec orange = {i1,i2, 0};   
+   vec yellow = {i1,i1, 0};
+   vec green = {0,i1, 0};
+   vec blue = {0,    0,i1};
+   vec violet = {i2, 0,i1};
 
    col = floor(t);
    if ( col==0 ) {
@@ -533,5 +530,5 @@ if ( t > 6 ) t = 6;
       // bad t parameter
    }
 
-   return rgb(vout[0], vout[1], vout[2]);
+   return rgb(vout.x, vout.y, vout.z);
 }
